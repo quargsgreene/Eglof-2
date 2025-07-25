@@ -14,8 +14,15 @@ EglofAudioProcessorEditor::EglofAudioProcessorEditor(
         bool readOnly = false;
         
         setSize(1200, 800);
+        addAndMakeVisible (&openButton);
+        openButton.setButtonText ("Choose a CSV File!");
+        openButton.onClick = [this] { openButtonClicked(); };
+        
+        formatManager.registerBasicFormats();       // [1]
+        transportSource.addChangeListener (this);   // [2]
         
         addAndMakeVisible(&qRangeSlider);
+        
         qRangeSlider.setSliderStyle(juce::Slider::SliderStyle::Rotary);
         qRangeSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, readOnly, textBoxSizeX, textBoxSizeY);
         qRangeSlider.setRange(0.1, 10, 0.1);
@@ -83,10 +90,10 @@ void EglofAudioProcessorEditor::paint(juce::Graphics& g) {
   g.drawFittedText("Eglof FILTER", getLocalBounds(),
                    juce::Justification::centredTop, 1);
 
-  g.setColour(juce::Colours::purple);
-  g.fillRect(dragDrop);
-  g.setColour(juce::Colours::white);
-  g.drawText("Drag and drop a CSV!", 1000, 35, 190, 200, juce::Justification::centred, true);
+//  g.setColour(juce::Colours::purple);
+//  g.fillRect(dragDrop);
+//  g.setColour(juce::Colours::white);
+//  g.drawText("Choose a CSV!", 1000, 35, 190, 200, juce::Justification::centred, true);
     
   magnitudes.resize(static_cast<std::vector<int>::size_type>(responseWidth));
 
@@ -201,6 +208,7 @@ void EglofAudioProcessorEditor::resized() {
     gainRangeSlider.setBounds(marginX + gapX, marginY, dialWidth, dialHeight);
     cutoffRangeSlider.setBounds(marginX + 2 * gapX, marginY, dialWidth, dialHeight);
     resonanceRangeSlider.setBounds(marginX + 3 * gapX, marginY, dialWidth, dialHeight);
+    openButton.setBounds (1000, 35, 190, 200);
     
     presetMenu.setBounds(marginX + gapX/3, marginY - 80, menuWidth, menuHeight);
     dataColumnMenu1.setBounds(marginX + 4 * gapX + 15, marginY, menuWidth/2, menuHeight);
@@ -218,4 +226,84 @@ void EglofAudioProcessorEditor::resized() {
     downloadCSVButton.setBounds(dataColumnMenu2.getX(), dataColumnMenu2.getY() - gapY, dataColumnMenu2.getWidth(), dataColumnMenu2.getHeight());
     chooseRandomDataButton.setBounds(dataColumnMenu1.getX(), dataColumnMenu1.getY() + 2 * gapY, 2 * dataColumnMenu1.getWidth() + 25, dataColumnMenu1.getHeight() + 10);
 }
+
+void EglofAudioProcessorEditor::openButtonClicked()
+{
+    chooser = std::make_unique<juce::FileChooser> ("Select a CSV file...",
+                                                   juce::File{},
+                                                   "*.csv");                     // [7]
+    auto chooserFlags = juce::FileBrowserComponent::openMode
+                      | juce::FileBrowserComponent::canSelectFiles;
+
+    chooser->launchAsync (chooserFlags, [this] (const juce::FileChooser& fc)     // [8]
+    {
+        auto file = fc.getResult();
+
+        if (file != juce::File{})                                                // [9]
+        {
+            auto* reader = formatManager.createReaderFor (file);                 // [10]
+
+            if (reader != nullptr)
+            {
+                auto newSource = std::make_unique<juce::AudioFormatReaderSource> (reader, true);   // [11]
+                transportSource.setSource (newSource.get(), 0, nullptr, reader->sampleRate);       // [12]
+                playButton.setEnabled (true);                                                      // [13]
+                readerSource.reset (newSource.release());                                          // [14]
+            }
+        }
+    });
+}
+
+void EglofAudioProcessorEditor::changeListenerCallback(juce::ChangeBroadcaster *source)
+{
+    if (source == &transportSource)
+    {
+        if (transportSource.isPlaying())
+            changeState (Playing);
+        else
+            changeState (Stopped);
+    }
+}
+
+void EglofAudioProcessorEditor::changeState (TransportState newState)
+{
+    if (state != newState)
+    {
+        state = newState;
+
+        switch (state)
+        {
+            case Stopped:                           // [3]
+                stopButton.setEnabled (false);
+                playButton.setEnabled (true);
+                transportSource.setPosition (0.0);
+                break;
+
+            case Starting:                          // [4]
+                playButton.setEnabled (false);
+                transportSource.start();
+                break;
+
+            case Playing:                           // [5]
+                stopButton.setEnabled (true);
+                break;
+
+            case Stopping:                          // [6]
+                transportSource.stop();
+                break;
+        }
+    }
+}
+
+void EglofAudioProcessorEditor::playButtonClicked()
+{
+    changeState (Starting);
+}
+
+void EglofAudioProcessorEditor::stopButtonClicked()
+{
+    changeState (Stopping);
+}
+
+
 }  // namespace audio_plugin
