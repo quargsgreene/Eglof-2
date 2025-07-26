@@ -15,13 +15,14 @@
 
 namespace audio_plugin {
 
-    class csvDragDrop:
+    class AddCsv:
     public juce::TextButton,
-    public juce::ChangeListener
+    public juce::ChangeListener,
+    public juce::LookAndFeel_V4
     {
     public:
-        explicit csvDragDrop();
-        ~csvDragDrop() override;
+        explicit AddCsv();
+        ~AddCsv() override;
         enum TransportState
         {
             Stopped,
@@ -29,13 +30,12 @@ namespace audio_plugin {
             Playing,
             Stopping
         };
-//        void paint(juce::Graphics&) override;
-//        void resized() override;
-        void openButtonClicked();
-        void changeListenerCallback(juce::ChangeBroadcaster* source) override;
-        void playButtonClicked();
-        void stopButtonClicked();
-        void changeState(TransportState newState);
+    
+     void openButtonClicked();
+     void changeListenerCallback(juce::ChangeBroadcaster* source) override;
+     void playButtonClicked();
+     void stopButtonClicked();
+     void changeState(TransportState newState);
         
     private:
         TransportState state;
@@ -45,5 +45,12 @@ namespace audio_plugin {
         juce::AudioFormatManager formatManager;
         std::unique_ptr<juce::AudioFormatReaderSource> readerSource;
         juce::AudioTransportSource transportSource;
+        
     };
+
+//    class AddCsvLookAndFeel: public juce::LookAndFeel_V4
+//    {
+//    public:
+//        AddCsvLookAndFeel();
+//    };
 }

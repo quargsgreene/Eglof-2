@@ -3,7 +3,8 @@
 #include "PluginProcessor.h"
 #include "Knob.h"
 #include "Menu.h"
-#include "csvDragDrop.h"
+#include "AddCsv.h"
+#include "Dropdown.h"
 
 namespace audio_plugin {
 
@@ -24,11 +25,11 @@ private:
     juce::Slider cutoffRangeSlider;
     juce::Slider resonanceRangeSlider;
     
-    juce::ComboBox presetMenu;
-    juce::ComboBox dataColumnMenu1;
-    juce::ComboBox dataColumnMenu2;
-    juce::ComboBox dataColumnMenu3;
-    juce::ComboBox dataColumnMenu4;
+    Dropdown presetMenu;
+    Dropdown dataColumnMenu1;
+    Dropdown dataColumnMenu2;
+    Dropdown dataColumnMenu3;
+    Dropdown dataColumnMenu4;
     
     juce::ShapeButton powerButton{"Power", juce::Colours::red, juce::Colours::green, juce::Colours::blue};
     juce::TextButton helpButton{"Help"};
@@ -39,7 +40,8 @@ private:
     juce::TextButton pasteButton{"Paste"};
     juce::TextButton chooseRandomDataButton{"Choose data for me!"};
     juce::TextButton downloadCSVButton{"Download CSV"};
-    csvDragDrop openButton;
+    AddCsv openButton;
+//    AddCsvLookAndFeel csvWindowLookAndFeel;
     juce::Image background;
 
   EglofAudioProcessor& processorRef;

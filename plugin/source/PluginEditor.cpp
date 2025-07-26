@@ -1,6 +1,6 @@
 #include "Eglof/PluginEditor.h"
 #include "Eglof/PluginProcessor.h"
-#include "../include/Eglof/csvDragDrop.h"
+#include "../include/Eglof/AddCsv.h"
 #include <sstream>
 
 namespace audio_plugin {
@@ -16,7 +16,7 @@ EglofAudioProcessorEditor::EglofAudioProcessorEditor(
         
         setSize(1200, 800);
         addAndMakeVisible (&openButton);
-        openButton.setButtonText ("Choose a CSV File!");
+//        openButton.setLookAndFeel(&csvWindowLookAndFeel);
         openButton.onClick = [this] {openButton.openButtonClicked(); };
         
         addAndMakeVisible(&qRangeSlider);
@@ -47,10 +47,15 @@ EglofAudioProcessorEditor::EglofAudioProcessorEditor(
         resonanceRangeSlider.setValue(0);
         
         addAndMakeVisible(&presetMenu);
+        
         addAndMakeVisible(&dataColumnMenu1);
+        dataColumnMenu1.setText("Q Mapping");
         addAndMakeVisible(&dataColumnMenu2);
+        dataColumnMenu2.setText("Gain Mapping");
         addAndMakeVisible(&dataColumnMenu3);
+        dataColumnMenu3.setText("Cutoff Mapping");
         addAndMakeVisible(&dataColumnMenu4);
+        dataColumnMenu4.setText("Resonance Mapping");
         
         float powerButtonSize = 50.f;
         juce::Path powerButtonShape;
