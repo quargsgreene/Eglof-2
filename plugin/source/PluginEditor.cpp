@@ -17,7 +17,7 @@ EglofAudioProcessorEditor::EglofAudioProcessorEditor(
         setSize(1200, 800);
         addAndMakeVisible (&openButton);
 //        openButton.setLookAndFeel(&csvWindowLookAndFeel);
-        openButton.onClick = [this] {openButton.openButtonClicked(); };
+//        openButton.onClick = [this] {openButton.openButtonClicked(); };
         
         addAndMakeVisible(&qRangeSlider);
         

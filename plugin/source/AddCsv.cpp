@@ -7,6 +7,7 @@ AddCsv::AddCsv(){
 
     formatManager.registerBasicFormats();
     transportSource.addChangeListener (this);
+    this->onClick = [this] {this->openButtonClicked(); };
     this->setButtonText("Select a CSV File!");
 }
 
