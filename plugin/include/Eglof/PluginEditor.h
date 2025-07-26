@@ -4,7 +4,7 @@
 #include "Knob.h"
 #include "Menu.h"
 #include "AddCsv.h"
-#include "Dropdown.h"
+#include "CsvColumnSelectionDropdown.h"
 
 namespace audio_plugin {
 
@@ -16,7 +16,11 @@ public:
     
     void paint(juce::Graphics&) override;
     void resized() override;
-    
+    CsvColumnSelectionDropdown dataColumnMenu1;
+    CsvColumnSelectionDropdown dataColumnMenu2;
+    CsvColumnSelectionDropdown dataColumnMenu3;
+    CsvColumnSelectionDropdown dataColumnMenu4;
+    AddCsv openButton;
 private:
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
@@ -25,11 +29,8 @@ private:
     juce::Slider cutoffRangeSlider;
     juce::Slider resonanceRangeSlider;
     
-    Dropdown presetMenu;
-    Dropdown dataColumnMenu1;
-    Dropdown dataColumnMenu2;
-    Dropdown dataColumnMenu3;
-    Dropdown dataColumnMenu4;
+    CsvColumnSelectionDropdown presetMenu;
+
     
     juce::ShapeButton powerButton{"Power", juce::Colours::red, juce::Colours::green, juce::Colours::blue};
     juce::TextButton helpButton{"Help"};
@@ -40,8 +41,7 @@ private:
     juce::TextButton pasteButton{"Paste"};
     juce::TextButton chooseRandomDataButton{"Choose data for me!"};
     juce::TextButton downloadCSVButton{"Download CSV"};
-    AddCsv openButton;
-//    AddCsvLookAndFeel csvWindowLookAndFeel;
+//    AddCsv openButton;
     juce::Image background;
 
   EglofAudioProcessor& processorRef;

@@ -9,7 +9,7 @@ namespace audio_plugin
 void CsvColumnSelectionDropdown::changeListenerCallback(juce::ChangeBroadcaster *selectedData){
     (void) selectedData;
     // Detect when csv is uploaded
-    // Set menu options to each entryin first line
+    // Set menu options to each entry in first line
 }
 
 void CsvColumnSelectionDropdown::dataColumnSelected()

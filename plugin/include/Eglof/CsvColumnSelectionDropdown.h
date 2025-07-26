@@ -8,13 +8,13 @@
 
 
 namespace audio_plugin {
-    class Dropdown: public juce::ChangeListener,
+    class CsvColumnSelectionDropdown: public juce::ChangeListener,
                     public juce::ComboBox,
                     public juce::LookAndFeel_V4
     {
     public:
-        explicit Dropdown();
-        ~Dropdown() override;
+        explicit CsvColumnSelectionDropdown();
+        ~CsvColumnSelectionDropdown() override;
         void changeListenerCallback(juce::ChangeBroadcaster* selectedData) override;
         void dataColumnSelected();
     };

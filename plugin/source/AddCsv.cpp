@@ -1,101 +1,139 @@
 #include "../include/Eglof/AddCsv.h"
+#include "../include/Eglof/PluginEditor.h"
+#include <juce_core/juce_core.h>
 
 
 namespace audio_plugin{
 
-AddCsv::AddCsv(){
-
-    formatManager.registerBasicFormats();
-    transportSource.addChangeListener (this);
-    this->onClick = [this] {this->openButtonClicked(); };
-    this->setButtonText("Select a CSV File!");
+AddCsv::AddCsv(const juce::String &fileExtension,
+               const juce::String &fileWildCard,
+               const juce::String &openFileDialogTitle,
+               const juce::String &saveFileDialogTitle): juce::FileBasedDocument(fileExtension,
+                                                                                 fileWildCard,
+                                                                                 openFileDialogTitle,
+                                                                                 saveFileDialogTitle),
+fileExtName ("csv"),
+wildcardExtName("*.csv"),
+openDialogText("Select a CSV file..."),
+saveDialogText("Save file")
+{
+    chooser = std::make_unique<juce::FileChooser> (openDialogText,
+                                                   juce::File{},
+                                                   wildcardExtName);
+    auto chooserFlags = juce::FileBrowserComponent::openMode
+    | juce::FileBrowserComponent::canSelectFiles;
+    
+    this->onClick = [this, chooserFlags] {chooser->launchAsync (chooserFlags, [this] (const juce::FileChooser& fc)     // [8]
+                                                                {
+        auto file = fc.getResult();
+        
+        if (file != juce::File{} && file.hasReadAccess())                                                // [9]
+        {
+            loadDocument(file);
+        }
+    });};
 }
 
 AddCsv::~AddCsv(){}
 
-void AddCsv::openButtonClicked()
+void AddCsv::changeListenerCallback(juce::ChangeBroadcaster *source)
 {
-    chooser = std::make_unique<juce::FileChooser> ("Select a CSV file...",
-                                                   juce::File{},
-                                                   "*.csv");                     // [7]
-    auto chooserFlags = juce::FileBrowserComponent::openMode
-    | juce::FileBrowserComponent::canSelectFiles;
-    
-    chooser->launchAsync (chooserFlags, [this] (const juce::FileChooser& fc)     // [8]
-                          {
-        auto file = fc.getResult();
-        
-        if (file != juce::File{})                                                // [9]
-        {
-            auto* reader = formatManager.createReaderFor (file);                 // [10]
-            
-            if (reader != nullptr)
-            {
-                auto newSource = std::make_unique<juce::AudioFormatReaderSource> (reader, true);   // [11]
-                transportSource.setSource (newSource.get(), 0, nullptr, reader->sampleRate);       // [12]
-                playButton.setEnabled (true);                                                      // [13]
-                readerSource.reset (newSource.release());                                          // [14]
-            }
+    if (source == reinterpret_cast<juce::ChangeBroadcaster*>(chooser.get())){
+        if(state == Empty && !state){
+            state = Nonempty;
         }
-    });
+    }
+}
+
+//
+juce::String AddCsv::getDocumentTitle()
+{
+    return csvDocumentTitle;
+}
+
+juce::Result AddCsv::loadDocument(const juce::File &file)
+{
+    csvColumns = getCsvColumns(file);
+    csvDocumentTitle = file.getFileName();
+    if(csvColumns.isEmpty() && !file.exists()){
+        return juce::Result::fail("Could not open: " + file.getFullPathName());
+    }
+    setLastDocumentOpened(file);
+    documentModified = false;
+    if(menu1 != nullptr){
+        menu1->clear();
+        menu2->clear();
+        menu3->clear();
+        menu4->clear();
+        
+        for(int i = 0; i < csvColumns.size(); ++i)
+        {
+            auto menuItemId = i + 1;
+            menu1->addItem(csvColumns[i], menuItemId);
+            menu2->addItem(csvColumns[i], menuItemId);
+            menu3->addItem(csvColumns[i], menuItemId);
+            menu4->addItem(csvColumns[i], menuItemId);
+        }
+    }
+    
+    return juce::Result::ok();
+}
+//
+juce::Result AddCsv::saveDocument(const juce::File &file)
+{
+    juce::String saved = file.loadFileAsString();
+    if(saved.isEmpty() && !file.exists());
+    {
+        return juce::Result::fail("Could not save: " + file.getFullPathName());
+    }
+    return juce::Result::ok();
 }
 
 
+void AddCsv::setLastDocumentOpened(const juce::File &file)
+{
+    lastCsvFileOpened = file;
+}
 
-    void AddCsv::changeListenerCallback(juce::ChangeBroadcaster *source)
+juce::File AddCsv::getLastDocumentOpened()
+{
+    return lastCsvFileOpened;
+}
+
+juce::StringArray AddCsv::getCsvColumns(auto file)
+{
+    juce::StringArray csvRows;
+    file.readLines(csvRows);
+    juce::String csvColumnString = csvRows[0];
+    // iterate
+    juce::String currentColumn;
+    juce::StringArray columns;
+    juce::String comma(",");
+    // create elements char by char
+    // append to output array when comma is found
+    // return output array
+    
+    for (auto columnChar : csvColumnString)
     {
-        if (source == &transportSource)
-        {
-            if (transportSource.isPlaying())
-                changeState (Playing);
-            else
-                changeState (Stopped);
+        juce::String currentChar = static_cast<juce::String>(columnChar);
+        if(currentChar == comma){
+            columns.add(currentColumn);
+            currentColumn = "";
+        } else{
+            currentColumn += currentChar;
         }
     }
+    
+    return columns;
+}
 
-    void AddCsv::changeState (TransportState newState)
+void AddCsv::setColumnMenus(CsvColumnSelectionDropdown *m1, CsvColumnSelectionDropdown *m2, CsvColumnSelectionDropdown *m3, CsvColumnSelectionDropdown *m4)
     {
-        if (state != newState)
-        {
-            state = newState;
-            
-            switch (state)
-            {
-                case Stopped:                           // [3]
-                    stopButton.setEnabled (false);
-                    playButton.setEnabled (true);
-                    transportSource.setPosition (0.0);
-                    break;
-                    
-                case Starting:                          // [4]
-                    playButton.setEnabled (false);
-                    transportSource.start();
-                    break;
-                    
-                case Playing:                           // [5]
-                    stopButton.setEnabled (true);
-                    break;
-                    
-                case Stopping:                          // [6]
-                    transportSource.stop();
-                    break;
-            }
-        }
-    }
-
-    void AddCsv::playButtonClicked()
-    {
-        changeState (Starting);
-    }
-
-    void AddCsv::stopButtonClicked()
-    {
-        changeState (Stopping);
+        menu1 = m1;
+        menu2 = m2;
+        menu3 = m3;
+        menu4 = m4;
     }
 
 
-//    AddCsvLookAndFeel::AddCsvLookAndFeel()
-//    {
-//        this->setColour(AddCsv::buttonColourId, juce::Colour(0u, 191u, 99u));
-//    }
 }

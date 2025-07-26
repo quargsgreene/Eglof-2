@@ -6,7 +6,10 @@
 namespace audio_plugin {
 EglofAudioProcessorEditor::EglofAudioProcessorEditor(
     EglofAudioProcessor& p)
-    : AudioProcessorEditor(&p), processorRef(p) {
+    : AudioProcessorEditor(&p),
+    openButton("csv", "*.csv", "Choose a CSV...", "Save File"),
+    processorRef(p)
+{
   juce::ignoreUnused(processorRef);
   // Make sure that before the constructor has finished, you've set the
   // editor's size to whatever you need it to be.
@@ -16,10 +19,9 @@ EglofAudioProcessorEditor::EglofAudioProcessorEditor(
         
         setSize(1200, 800);
         addAndMakeVisible (&openButton);
-//        openButton.setLookAndFeel(&csvWindowLookAndFeel);
-//        openButton.onClick = [this] {openButton.openButtonClicked(); };
-        
+        openButton.setColumnMenus(&dataColumnMenu1, &dataColumnMenu2, &dataColumnMenu3, &dataColumnMenu4);
         addAndMakeVisible(&qRangeSlider);
+        
         
         qRangeSlider.setSliderStyle(juce::Slider::SliderStyle::Rotary);
         qRangeSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, readOnly, textBoxSizeX, textBoxSizeY);

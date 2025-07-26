@@ -2,6 +2,7 @@
 #include "PluginProcessor.h"
 #include "Knob.h"
 #include "Menu.h"
+#include "CsvColumnSelectionDropdown.h"
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <juce_audio_formats/juce_audio_formats.h>
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -18,39 +19,51 @@ namespace audio_plugin {
     class AddCsv:
     public juce::TextButton,
     public juce::ChangeListener,
-    public juce::LookAndFeel_V4
+    public juce::LookAndFeel_V4,
+    public juce::FileBasedDocument
     {
     public:
-        explicit AddCsv();
+        juce::StringArray csvColumns;
+
+        AddCsv(const juce::String &fileExtension,
+               const juce::String &fileWildCard,
+               const juce::String &openFileDialogTitle,
+               const juce::String &saveFileDialogTitle);
+
         ~AddCsv() override;
-        enum TransportState
-        {
-            Stopped,
-            Starting,
-            Playing,
-            Stopping
-        };
-    
-     void openButtonClicked();
-     void changeListenerCallback(juce::ChangeBroadcaster* source) override;
-     void playButtonClicked();
-     void stopButtonClicked();
-     void changeState(TransportState newState);
+        
+         enum FileTransportState
+         {
+             Empty,
+             Nonempty
+         };
+         void changeListenerCallback(juce::ChangeBroadcaster* source) override;
+         void setColumnMenus (CsvColumnSelectionDropdown* m1, CsvColumnSelectionDropdown* m2, CsvColumnSelectionDropdown* m3, CsvColumnSelectionDropdown* m4);
+         juce::StringArray getCsvColumns(auto file);
         
     private:
-        TransportState state;
-        juce::TextButton playButton;
-        juce::TextButton stopButton;
+        FileTransportState state;
         std::unique_ptr<juce::FileChooser> chooser;
-        juce::AudioFormatManager formatManager;
-        std::unique_ptr<juce::AudioFormatReaderSource> readerSource;
-        juce::AudioTransportSource transportSource;
+        juce::String csvDocumentTitle;
+        juce::File lastCsvFileOpened;
+        bool documentModified;
+        
+        juce::String fileExtName;
+        juce::String wildcardExtName;
+        juce::String openDialogText;
+        juce::String saveDialogText;
+        
+        CsvColumnSelectionDropdown* menu1 = nullptr;
+        CsvColumnSelectionDropdown* menu2 = nullptr;
+        CsvColumnSelectionDropdown* menu3 = nullptr;
+        CsvColumnSelectionDropdown* menu4 = nullptr;
+    protected:
+        juce::String getDocumentTitle() override;
+        juce::Result loadDocument(const juce::File &file) override;
+        juce::Result saveDocument(const juce::File &file) override;
+        juce::File getLastDocumentOpened() override;
+        void setLastDocumentOpened (const juce::File &file) override;
         
     };
 
-//    class AddCsvLookAndFeel: public juce::LookAndFeel_V4
-//    {
-//    public:
-//        AddCsvLookAndFeel();
-//    };
 }
