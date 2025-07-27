@@ -5,6 +5,7 @@
 #include "Menu.h"
 #include "AddCsv.h"
 #include "CsvColumnSelectionDropdown.h"
+#include "LookAndFeel.h"
 
 namespace audio_plugin {
 
@@ -21,6 +22,7 @@ public:
     CsvColumnSelectionDropdown dataColumnMenu3;
     CsvColumnSelectionDropdown dataColumnMenu4;
     AddCsv openButton;
+    LookAndFeel uiAesthetic;
 private:
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.

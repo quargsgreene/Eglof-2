@@ -18,6 +18,9 @@ EglofAudioProcessorEditor::EglofAudioProcessorEditor(
         bool readOnly = false;
         
         setSize(1200, 800);
+    
+        setLookAndFeel(&uiAesthetic);
+    
         addAndMakeVisible (&openButton);
         openButton.setColumnMenus(&dataColumnMenu1, &dataColumnMenu2, &dataColumnMenu3, &dataColumnMenu4);
         openButton.setButtonText("Click to choose a CSV!");
