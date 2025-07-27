@@ -62,9 +62,13 @@ juce::Result AddCsv::loadDocument(const juce::File &file)
     documentModified = false;
     if(menu1 != nullptr){
         menu1->clear();
+        menu1->setText("Q Mapping");
         menu2->clear();
+        menu2->setText("Gain Mapping");
         menu3->clear();
+        menu3->setText("Cutoff Mapping");
         menu4->clear();
+        menu4->setText("Resonance Mapping");
         
         for(int i = 0; i < csvColumns.size(); ++i)
         {
@@ -105,25 +109,41 @@ juce::StringArray AddCsv::getCsvColumns(auto file)
     juce::StringArray csvRows;
     file.readLines(csvRows);
     juce::String csvColumnString = csvRows[0];
-    // iterate
+    std::cout<<"Column String Length:"<<std::endl;
+    std::cout<<csvColumnString.length()<<std::endl;
+
     juce::String currentColumn;
     juce::StringArray columns;
     juce::String comma(",");
-    // create elements char by char
-    // append to output array when comma is found
-    // return output array
+    juce::String space(" ");
+    juce::String singleQuote("'");
     
-    for (auto columnChar : csvColumnString)
+    for (int i = 0; i < csvColumnString.length(); i++)
     {
-        juce::String currentChar = static_cast<juce::String>(columnChar);
+        std::cout <<"i:"<<std::endl;
+        std::cout<<i<<std::endl;
+        std::cout<<"Current Column before if else:"<<std::endl;
+        std::cout<<currentColumn<<std::endl;
+        juce::String currentChar = juce::String::charToString(csvColumnString[i]);
         if(currentChar == comma){
             columns.add(currentColumn);
             currentColumn = "";
-        } else{
+        }else if (currentChar == singleQuote || currentChar == space)
+            continue;
+        else{
             currentColumn += currentChar;
         }
+        std::cout <<"Current Char:"<<std::endl;
+        std::cout<<currentChar << std::endl;
+        std::cout<<"Current Column after if else:"<<std::endl;
+        std::cout<<currentColumn<<std::endl;
     }
-    
+    if(currentColumn.isNotEmpty()){
+        columns.add(currentColumn);
+    }
+    for(int i = 0; i < columns.size(); i++){
+        std::cout<<columns[i]<<std::endl;
+    }
     return columns;
 }
 

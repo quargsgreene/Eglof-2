@@ -20,8 +20,8 @@ EglofAudioProcessorEditor::EglofAudioProcessorEditor(
         setSize(1200, 800);
         addAndMakeVisible (&openButton);
         openButton.setColumnMenus(&dataColumnMenu1, &dataColumnMenu2, &dataColumnMenu3, &dataColumnMenu4);
+        openButton.setButtonText("Click to choose a CSV!");
         addAndMakeVisible(&qRangeSlider);
-        
         
         qRangeSlider.setSliderStyle(juce::Slider::SliderStyle::Rotary);
         qRangeSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, readOnly, textBoxSizeX, textBoxSizeY);
@@ -73,7 +73,6 @@ EglofAudioProcessorEditor::EglofAudioProcessorEditor(
         addAndMakeVisible(&helpButton);
         addAndMakeVisible(&chooseRandomDataButton);
         addAndMakeVisible(&downloadCSVButton);
-
 }
 
 EglofAudioProcessorEditor::~EglofAudioProcessorEditor() {}
@@ -109,7 +108,6 @@ void EglofAudioProcessorEditor::paint(juce::Graphics& g) {
   {
     responseCurve.lineTo(static_cast<size_t>(responseArea.getX() - 3) + i, magnitudes[i] + getWidth()/2);
   }
-    
 
   g.setColour(juce::Colours::black);
   g.fillRoundedRectangle(responseArea.toFloat(),4);
