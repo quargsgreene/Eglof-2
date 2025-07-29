@@ -93,7 +93,7 @@ void EglofAudioProcessorEditor::paint(juce::Graphics& g) {
       getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
 
   g.setColour(juce::Colours::white);
-  g.setFont(15.0f);
+  g.setFont(juce::FontOptions("Courier", 15.0f, juce::Font::bold));
   g.drawFittedText("Eglof FILTER", getLocalBounds(),
                    juce::Justification::centredTop, 1);
     

@@ -1,4 +1,5 @@
 #pragma once
+#include "eglofFilter.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
@@ -37,6 +38,7 @@ public:
     
 
 private:
+  eglofFilter filter;
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EglofAudioProcessor)
 };
 }  // namespace audio_plugin

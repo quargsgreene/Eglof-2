@@ -1,6 +1,7 @@
 #include "Eglof/PluginProcessor.h"
 #include "Eglof/PluginEditor.h"
 
+
 namespace audio_plugin {
 EglofAudioProcessor::EglofAudioProcessor()
     : AudioProcessor(
@@ -11,7 +12,9 @@ EglofAudioProcessor::EglofAudioProcessor()
 #endif
               .withOutput("Output", juce::AudioChannelSet::stereo(), true)
 #endif
-      ) {
+      )
+{
+          
 }
 
 EglofAudioProcessor::~EglofAudioProcessor() {}
@@ -76,6 +79,7 @@ void EglofAudioProcessor::prepareToPlay(double sampleRate,
                                               int samplesPerBlock) {
   // Use this method as the place to do any pre-playback
   // initialisation that you need..
+  filter.prepare(sampleRate, getTotalNumOutputChannels());
   juce::ignoreUnused(sampleRate, samplesPerBlock);
 }
 
@@ -136,6 +140,7 @@ void EglofAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     juce::ignoreUnused(channelData);
     // ..do something to the data...
   }
+    filter.process(buffer);
 }
 
 bool EglofAudioProcessor::hasEditor() const {

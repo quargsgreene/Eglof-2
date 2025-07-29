@@ -25,9 +25,9 @@ namespace audio_plugin {
         
         setColour(juce::PopupMenu::backgroundColourId, eglofOrange);
         setColour(juce::PopupMenu::textColourId, eglofGray);
-        setColour(juce::PopupMenu::highlightedTextColourId, eglofWhite);
+        setColour(juce::PopupMenu::highlightedTextColourId, eglofGreen);
         setColour(juce::PopupMenu::highlightedBackgroundColourId, eglofPurple);
-
+        
     }
 
     LookAndFeel::~LookAndFeel(){}
@@ -69,7 +69,7 @@ void LookAndFeel::drawComboBox(juce::Graphics& g, int width, int height, bool is
 void LookAndFeel::drawPopupMenuBackground(juce::Graphics &g, int width, int height)
 {
     g.fillAll(findColour(juce::PopupMenu::backgroundColourId));
-    juce::Colour shadow = juce::Colours::black.withAlpha (0.2f);
+    juce::Colour shadow = juce::Colours::black.withAlpha (0.0f);
     g.setColour (shadow);
     g.fillRect (-4, -4, width + 8, height + 8);
 }
@@ -90,11 +90,29 @@ void LookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& button, 
         }
     }
 
+//void LookAndFeel::drawPopupMenuItem(juce::Graphics &g, const juce::Rectangle<int> &area, bool isSeparator, bool isActive, bool isHighlighted, bool isTicked, bool hasSubMenu, const juce::String &text, const juce::String &shortcutKeyText, const juce::Drawable *icon, const juce::Colour *textColour)
+//{
+//    (void) icon;
+//    (void) textColour;
+//    (void) shortcutKeyText;
+//    (void) text;
+//    (void) isActive;
+//    (void) isHighlighted;
+//    (void) hasSubMenu;
+//    (void) isTicked;
+//    (void) area;
+//    
+//    if (isSeparator){
+//        g.setColour(findColour(juce::PopupMenu::highlightedBackgroundColourId));
+//    }
+
+}
+
 //void LookAndFeel::drawScrollbar (juce::Graphics& g, juce::ScrollBar &scrollbar, int x, int y, int width, int height, bool isScrollbarVertical, int thumbStartPosition, int thumbSize, bool isMouseOverButton, bool isButtonDown){}
 // slider
 // response window
 // response curve
 // help bubble
 // power button
-}
+
 
