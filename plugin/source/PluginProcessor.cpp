@@ -1,5 +1,6 @@
 #include "Eglof/PluginProcessor.h"
 #include "Eglof/PluginEditor.h"
+#include "Eglof/eglofFilter.h"
 
 
 namespace audio_plugin {
@@ -77,9 +78,17 @@ void EglofAudioProcessor::changeProgramName(int index,
 
 void EglofAudioProcessor::prepareToPlay(double sampleRate,
                                               int samplesPerBlock) {
+  juce::dsp::ProcessSpec spec;
+  spec.maximumBlockSize = static_cast<juce::uint32>(samplesPerBlock);
+  spec.numChannels = 1;
+  spec.sampleRate = sampleRate;
+  chain.prepare(spec);
   // Use this method as the place to do any pre-playback
   // initialisation that you need..
-  filter.prepare(sampleRate, getTotalNumOutputChannels());
+//  filter.prepare(sampleRate, getTotalNumOutputChannels());
+  spec.numChannels = static_cast<juce::uint32>(getTotalNumOutputChannels());
+  osc.prepare(spec);
+  osc.setFrequency(220);
   juce::ignoreUnused(sampleRate, samplesPerBlock);
 }
 
@@ -129,6 +138,12 @@ void EglofAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
   for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
     buffer.clear(i, 0, buffer.getNumSamples());
 
+  filter.updateFilters();
+  juce::dsp::AudioBlock<float>block(buffer);
+  auto stereoBlock = block.getSubsetChannelBlock(0, 2);
+  juce::dsp::ProcessContextReplacing<float> stereoContext(stereoBlock);
+//    stereoBlock.process(stereoContext);
+
   // This is the place where you'd normally do the guts of your plugin's
   // audio processing...
   // Make sure to reset the state if your inner loop is processing
@@ -140,7 +155,9 @@ void EglofAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     juce::ignoreUnused(channelData);
     // ..do something to the data...
   }
+    // fix
     filter.process(buffer);
+    filter.update(buffer);
 }
 
 bool EglofAudioProcessor::hasEditor() const {
@@ -156,7 +173,9 @@ void EglofAudioProcessor::getStateInformation(
   // You should use this method to store your parameters in the memory block.
   // You could do that either as raw data, or use the XML or ValueTree classes
   // as intermediaries to make it easy to save and load complex data.
+  juce::MemoryOutputStream mos(destData, true);
   juce::ignoreUnused(destData);
+  apvts.state.writeToStream(mos);
 }
 
 void EglofAudioProcessor::setStateInformation(const void* data,
@@ -164,8 +183,43 @@ void EglofAudioProcessor::setStateInformation(const void* data,
   // You should use this method to restore your parameters from this memory
   // block, whose contents will have been created by the getStateInformation()
   // call.
+  auto tree = juce::ValueTree::readFromData(data,static_cast<juce::uint32>(sizeInBytes));
+  if(tree.isValid())
+  {
+      apvts.replaceState(tree);
+      filter.updateFilters();
+  }
   juce::ignoreUnused(data, sizeInBytes);
 
+}
+
+juce::AudioProcessorValueTreeState::ParameterLayout EglofAudioProcessor::createParameterLayout()
+{
+    juce::AudioProcessorValueTreeState::ParameterLayout layout;
+    layout.add(std::make_unique<juce::AudioParameterFloat>("LowCut Frequency", "LowCut Frequency", juce::NormalisableRange<float>(20.f, 20000.f, 1.f, 0.25f), 20.f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>("HighCut Frequency", "HighCut Frequency", juce::NormalisableRange<float>(20.f, 20000.f, 1.f, 0.25f), 20000.f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>("Peak Frequency", "Peak Frequency", juce::NormalisableRange<float>(20.f, 20000.f, 1.f, 0.25f), 750.f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>("Peak Gain", "Peak Gain", juce::NormalisableRange<float>(-24.f, 24.f, 0.5f, 1.f), 0.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>("Peak Q", "Peak Q", juce::NormalisableRange<float>(0.1f, 10.f, 0.05f, 1.f), 1.f));
+    
+    juce::StringArray suffixArray;
+    for(int i = 0; i < 4; ++i)
+    {
+        juce::String suffix;
+        suffix << (12 + i*12);
+        suffix << "db/Oct";
+        suffixArray.add(suffix);
+        
+    }
+    layout.add(std::make_unique<juce::AudioParameterChoice>("LowCut slope", "LowCut Slope", suffixArray, 0));
+    layout.add(std::make_unique<juce::AudioParameterChoice>("HighCut slope", "HighCut Slope", suffixArray, 0));
+    
+    layout.add(std::make_unique<juce::AudioParameterBool>("LowCut Bypassed", "LowCut Bypassed", false));
+    layout.add(std::make_unique<juce::AudioParameterBool>("Peak Bypassed", "Peak Bypassed", false));
+    layout.add(std::make_unique<juce::AudioParameterBool>("HighCut Bypassed", "HighCut Bypassed", false));
+    layout.add(std::make_unique<juce::AudioParameterBool>("Analyser Enabled", "Analyser Enabled", true));
+    
+    return layout;
 }
 
 }  // namespace audio_plugin

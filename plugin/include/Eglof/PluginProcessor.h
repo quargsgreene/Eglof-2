@@ -2,12 +2,15 @@
 #include "eglofFilter.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_dsp/juce_dsp.h>
 
 namespace audio_plugin {
 class EglofAudioProcessor : public juce::AudioProcessor {
 public:
   EglofAudioProcessor();
   ~EglofAudioProcessor() override;
+    
+  juce::dsp::Oscillator<float> osc;
 
   void prepareToPlay(double sampleRate, int samplesPerBlock) override;
   void releaseResources() override;
@@ -35,10 +38,13 @@ public:
 
   void getStateInformation(juce::MemoryBlock& destData) override;
   void setStateInformation(const void* data, int sizeInBytes) override;
+  static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+  juce::AudioProcessorValueTreeState apvts {*this, nullptr, "Parameters", createParameterLayout()};
+  using BlockType = juce::AudioBuffer<float>;
     
-
 private:
   eglofFilter filter;
+  eglofFilter::StereoChain chain;
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EglofAudioProcessor)
 };
 }  // namespace audio_plugin
