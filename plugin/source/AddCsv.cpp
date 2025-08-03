@@ -149,6 +149,7 @@ juce::StringArray AddCsv::getCsvColumns(auto file)
 
 void AddCsv::setColumnMenus(CsvColumnSelectionDropdown *m1, CsvColumnSelectionDropdown *m2, CsvColumnSelectionDropdown *m3, CsvColumnSelectionDropdown *m4)
     {
+  
         menu1 = m1;
         menu2 = m2;
         menu3 = m3;

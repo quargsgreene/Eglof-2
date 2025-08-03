@@ -31,9 +31,9 @@ juce_add_plugin(
 )
 
 # Sets the source files of the plugin project.
-set(SOURCE_FILES source/PluginEditor.cpp source/PluginProcessor.cpp source/Knob.cpp source/AddCsv.cpp source/CsvColumnSelectionDropdown.cpp source/LookAndFeel.cpp source/eglofFilter.cpp)
+set(SOURCE_FILES source/PluginEditor.cpp source/PluginProcessor.cpp source/Knob.cpp source/AddCsv.cpp source/CsvColumnSelectionDropdown.cpp source/LookAndFeel.cpp source/eglofFilter.cpp source/FFTDataGenerator.cpp source/AnalyserPathGenerator.cpp source/PathProducer.cpp source/ResponseCurve.cpp)
 # Optional; includes header files in the project file tree in Visual Studio
-set(HEADER_FILES ${INCLUDE_DIR}/PluginEditor.h ${INCLUDE_DIR}/PluginProcessor.h ${INCLUDE_DIR}/Knob.h ${INCLUDE_DIR}/AddCsv.h ${INCLUDE_DIR}/CsvColumnSelectionDropdown.h ${INCLUDE_DIR}/LookAndFeel.h ${INCLUDE_DIR}/eglofFilter.h)
+set(HEADER_FILES ${INCLUDE_DIR}/PluginEditor.h ${INCLUDE_DIR}/PluginProcessor.h ${INCLUDE_DIR}/Knob.h ${INCLUDE_DIR}/AddCsv.h ${INCLUDE_DIR}/CsvColumnSelectionDropdown.h ${INCLUDE_DIR}/LookAndFeel.h ${INCLUDE_DIR}/eglofFilter.h ${INCLUDE_DIR}/FFTDataGenerator.h ${INCLUDE_DIR}/AnalyserPathGenerator.h ${INCLUDE_DIR}/PathProducer.h ${INCLUDE_DIR}/ResponseCurve.h ${INCLUDE_DIR}/Fifo.h ${INCLUDE_DIR}/SingleChannelSampleFifo.h)
 target_sources(${PROJECT_NAME} PRIVATE ${SOURCE_FILES} ${HEADER_FILES})
 
 # Sets the include directories of the plugin project.
@@ -41,7 +41,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/in
 
 # Links to all necessary dependencies. The present ones are recommended by JUCE.
 # If you use one of the additional modules, like the DSP module, you need to specify it here.
-target_link_libraries_system(${PROJECT_NAME} PUBLIC juce::juce_audio_utils)
+target_link_libraries_system(${PROJECT_NAME} PUBLIC juce::juce_audio_utils juce::juce_dsp juce::juce_events juce::juce_audio_processors juce::juce_gui_basics juce::juce_core juce::juce_graphics)
 target_link_libraries(
   ${PROJECT_NAME} PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_lto_flags
                          juce::juce_recommended_warning_flags
