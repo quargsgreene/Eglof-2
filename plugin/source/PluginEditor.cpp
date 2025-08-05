@@ -39,6 +39,7 @@ void audio_plugin::ResponseCurveComponent::updateResponseCurve()
     
     auto& lowcut = monoChain.get<ChainPositions::LowCut>();
     auto& peak = monoChain.get<ChainPositions::Peak>();
+    auto& peak2 = monoChain.get<ChainPositions::Peak2>();
     auto& highcut = monoChain.get<ChainPositions::HighCut>();
     juce::ignoreUnused(lowcut, highcut);
     
@@ -55,6 +56,9 @@ void audio_plugin::ResponseCurveComponent::updateResponseCurve()
         
         if(! monoChain.isBypassed<ChainPositions::Peak>() ){
             mag *= static_cast<float>(peak.coefficients->getMagnitudeForFrequency(freq, sampleRate));
+        }
+        if(! monoChain.isBypassed<ChainPositions::Peak2>() ){
+            mag *= static_cast<float>(peak2.coefficients->getMagnitudeForFrequency(freq, sampleRate));
         }
 //        if( !monoChain.isBypassed<ChainPositions::LowCut>() )
 //        {
@@ -358,10 +362,14 @@ void audio_plugin::ResponseCurveComponent::updateChain()
     
     monoChain.setBypassed<ChainPositions::LowCut>(chainSettings.lowCutBypassed);
     monoChain.setBypassed<ChainPositions::Peak>(chainSettings.peakBypassed);
+    monoChain.setBypassed<ChainPositions::Peak2>(chainSettings.peak2Bypassed);
     monoChain.setBypassed<ChainPositions::HighCut>(chainSettings.highCutBypassed);
     
     auto peakCoefficients = makePeakFilter(chainSettings, audioProcessor.getSampleRate());
     updateCoefficients(monoChain.get<ChainPositions::Peak>().coefficients, peakCoefficients);
+    
+    auto peak2Coefficients = makePeakFilter2(chainSettings, audioProcessor.getSampleRate());
+    updateCoefficients(monoChain.get<ChainPositions::Peak2>().coefficients, peak2Coefficients);
     
     auto lowCutCoefficients = makeLowCutFilter(chainSettings, audioProcessor.getSampleRate());
     auto highCutCoefficients = makeHighCutFilter(chainSettings, audioProcessor.getSampleRate());
