@@ -262,7 +262,8 @@ private:
     void updateResponseCurve();
     
     juce::Path responseCurve;
-
+    
+    template<std::size_t... I>
     void updateChain();
     
     void drawBackgroundGrid(juce::Graphics& g);
