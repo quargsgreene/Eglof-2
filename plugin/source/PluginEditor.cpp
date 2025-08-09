@@ -1,10 +1,12 @@
 #include "Eglof/PluginEditor.h"
 #include "Eglof/PluginProcessor.h"
 #include "../include/Eglof/AddCsv.h"
-#include <sstream>
 #include <juce_dsp/juce_dsp.h>
 #include <juce_core/juce_core.h>
 #include <juce_events/juce_events.h>
+#include <sstream>
+#include <tuple>
+#include <utility>
 audio_plugin::ResponseCurveComponent::ResponseCurveComponent(EglofAudioProcessor& p) :
 audioProcessor(p),
 leftPathProducer(audioProcessor.leftChannelFifo),
@@ -30,18 +32,14 @@ audio_plugin::ResponseCurveComponent::~ResponseCurveComponent()
     }
 }
 
-void audio_plugin::ResponseCurveComponent::updateResponseCurve()
+template<std::size_t... I>
+void audio_plugin::ResponseCurveComponent::updateResponseCurveImpl(std::index_sequence<I...>)
 {
     using namespace juce;
     auto responseArea = getAnalysisArea();
     
     auto w = responseArea.getWidth();
-    
-    auto& lowcut = monoChain.get<ChainPositions::LowCut>();
-    auto& peak = monoChain.get<ChainPositions::Peak>();
-    auto& peak2 = monoChain.get<ChainPositions::Peak2>();
-    auto& highcut = monoChain.get<ChainPositions::HighCut>();
-    juce::ignoreUnused(lowcut, highcut);
+    auto peaks = std::forward_as_tuple(monoChain.get<I>()...);
     
     auto sampleRate = audioProcessor.getSampleRate();
     
@@ -52,38 +50,19 @@ void audio_plugin::ResponseCurveComponent::updateResponseCurve()
     for( int i = 0; i < w; ++i )
     {
         float mag = 1.f;
+
         auto freq = mapToLog10(static_cast<double>(i)/static_cast<double>(w), 20.0, 20000.0);
-        
-        if(! monoChain.isBypassed<ChainPositions::Peak>() ){
-            mag *= static_cast<float>(peak.coefficients->getMagnitudeForFrequency(freq, sampleRate));
-        }
-        if(! monoChain.isBypassed<ChainPositions::Peak2>() ){
-            mag *= static_cast<float>(peak2.coefficients->getMagnitudeForFrequency(freq, sampleRate));
-        }
-//        if( !monoChain.isBypassed<ChainPositions::LowCut>() )
-//        {
-//            if( !lowcut.isBypassed<0>() )
-//                mag *= static_cast<float>(lowcut.get<0>().coefficients->getMagnitudeForFrequency(freq, sampleRate));
-//            if( !lowcut.isBypassed<1>() )
-//                mag *= static_cast<float>(lowcut.get<1>().coefficients->getMagnitudeForFrequency(freq, sampleRate));
-//            if( !lowcut.isBypassed<2>() )
-//                mag *= static_cast<float>(lowcut.get<2>().coefficients->getMagnitudeForFrequency(freq, sampleRate));
-//            if( !lowcut.isBypassed<3>() )
-//                mag *= static_cast<float>(lowcut.get<3>().coefficients->getMagnitudeForFrequency(freq, sampleRate));
-//        }
-//
-//        if( !monoChain.isBypassed<ChainPositions::HighCut>() )
-//        {
-//            if( !highcut.isBypassed<0>() )
-//                mag *= static_cast<float>(highcut.get<0>().coefficients->getMagnitudeForFrequency(freq, sampleRate));
-//            if( !highcut.isBypassed<1>() )
-//                mag *= static_cast<float>(highcut.get<1>().coefficients->getMagnitudeForFrequency(freq, sampleRate));
-//            if( !highcut.isBypassed<2>() )
-//                mag *= static_cast<float>(highcut.get<2>().coefficients->getMagnitudeForFrequency(freq, sampleRate));
-//            if( !highcut.isBypassed<3>() )
-//                mag *= static_cast<float>(highcut.get<3>().coefficients->getMagnitudeForFrequency(freq, sampleRate));
-//        }
-//
+  
+//        mag *= (((monoChain.isBypassed<I>() ? 1.f : static_cast<float>((std::get<I>(peaks).coefficients -> getMagnitudeForFrequency(freq, sampleRate)))),...));
+        ([&]
+         {
+            auto& f = std::get<I>(peaks);
+            if(!monoChain.isBypassed<I>())
+            {
+                mag *= static_cast<float>(f.coefficients->getMagnitudeForFrequency(freq, sampleRate));
+            }
+        }(), ...);
+
         mags[static_cast<size_t>(i)] = static_cast<float>(Decibels::gainToDecibels(mag));
     }
     
@@ -291,12 +270,6 @@ void audio_plugin::ResponseCurveComponent::drawTextLabels(juce::Graphics &g)
         
         str.clear();
         str << (gDb - 24.f);
-
-//        r.setX(1);
-//        textWidth = bounds.getWidth();
-//        r.setSize(static_cast<int>(textWidth), fontHeight);
-//        g.setColour(Colours::lightgrey);
-//        g.drawFittedText(str, r, juce::Justification::centredLeft, 1);
     }
 }
 
@@ -357,40 +330,44 @@ void audio_plugin::ResponseCurveComponent::timerCallback()
 }
 
 template<std::size_t... I>
-void audio_plugin::ResponseCurveComponent::updateChain()
+void audio_plugin::ResponseCurveComponent::updateChainImpl(std::index_sequence<I...>)
 {
-    auto currentChainSettings = getChainSettings(audioProcessor.apvts);
-    auto peakCoefficients = makePeakFilters(currentChainSettings, audioProcessor.getSampleRate());
-    std::vector<std::atomic< float >*> bypassedSettings;
-    for (auto& [gainFreqPair, qBypassedPair] : currentChainSettings)
+    std::vector<Peak> currentChainSettings = getChainSettings(audioProcessor.apvts);
+    float gainOffsetDb = 0.0f;
+    bool  allBypassed = false;
+    auto* gainParam = audioProcessor.apvts.getRawParameterValue("Peak Master Gain");
+    auto* bypassAllParam = audioProcessor.apvts.getRawParameterValue("Bypass All");
+    if(gainParam)
     {
-        bypassedSettings.push_back(qBypassedPair.second);
+        gainOffsetDb = gainParam->load();
+        std::cout<<"param=" << gainParam->load();
+ 
     }
-    (monoChain.setBypassed<I>(bypassedSettings[I]), ...);
-    (updateCoefficients(monoChain.get<I>().coefficients, peakCoefficients),...);
     
-//    monoChain.setBypassed<ChainPositions::LowCut>(chainSettings.lowCutBypassed);
-//    monoChain.setBypassed<ChainPositions::Peak>(chainSettings.peakBypassed);
-//    monoChain.setBypassed<ChainPositions::Peak2>(chainSettings.peak2Bypassed);
-//    monoChain.setBypassed<ChainPositions::HighCut>(chainSettings.highCutBypassed);
-//    
-//    auto peakCoefficients = makePeakFilter(chainSettings, audioProcessor.getSampleRate());
-//    updateCoefficients(monoChain.get<ChainPositions::Peak>().coefficients, peakCoefficients);
-//    
-//    auto peak2Coefficients = makePeakFilter2(chainSettings, audioProcessor.getSampleRate());
-//    updateCoefficients(monoChain.get<ChainPositions::Peak2>().coefficients, peak2Coefficients);
-//    
-//    auto lowCutCoefficients = makeLowCutFilter(chainSettings, audioProcessor.getSampleRate());
-//    auto highCutCoefficients = makeHighCutFilter(chainSettings, audioProcessor.getSampleRate());
-//    
-//    updateCutFilter(monoChain.get<ChainPositions::LowCut>(),
-//                    lowCutCoefficients,
-//                    chainSettings.lowCutSlope);
-//    
-//    updateCutFilter(monoChain.get<ChainPositions::HighCut>(),
-//                    highCutCoefficients,
-//                    chainSettings.highCutSlope);
-   
+    if(bypassAllParam)
+    {
+        allBypassed = static_cast<bool>(bypassAllParam ->load());
+        std::cout<<"All Bypassed="<<allBypassed<<std::endl;
+    }
+    
+    auto peakCoefficients = makePeakFilters(currentChainSettings, audioProcessor.getSampleRate(), gainOffsetDb);
+    std::vector<bool> bypassedSettings;
+    bypassedSettings.reserve(currentChainSettings.size());
+    for (size_t i = 0; i < static_cast<size_t>(currentChainSettings.size()); ++i)
+    {
+        bypassedSettings.push_back(currentChainSettings[i].freq <= 0.0f ? true : currentChainSettings[i].bypass);
+    }
+    (monoChain.setBypassed<I>(I < currentChainSettings.size() ? bypassedSettings[I] : true), ...);
+    
+//    for(size_t i = 0; i <std::min<size_t>(CSV_MAX_ROWS, peakCoefficients.size()); ++i)
+//    {
+//        (updateCoefficients(monoChain.get<I>().coefficients, peakCoefficients[i]),...);
+//    }
+    ([&](){
+        if (I < peakCoefficients.size())
+            updateCoefficients(monoChain.get<I>().coefficients, peakCoefficients[I]);
+    }(), ...);
+ 
 }
 
 void audio_plugin::RotarySliderWithLabels::paint(juce::Graphics &g)
@@ -403,11 +380,6 @@ void audio_plugin::RotarySliderWithLabels::paint(juce::Graphics &g)
     auto range = getRange();
     
     auto sliderBounds = getSliderBounds();
-    
-//    g.setColour(Colours::red);
-//    g.drawRect(getLocalBounds());
-//    g.setColour(Colours::yellow);
-//    g.drawRect(sliderBounds);
     
     getLookAndFeel().drawRotarySlider(g,
                                       sliderBounds.getX(),
@@ -561,30 +533,30 @@ EglofAudioProcessorEditor::EglofAudioProcessorEditor(
     : AudioProcessorEditor(&p),
     openButton("csv", "*.csv", "Choose a CSV...", "Save File"),
     processorRef(p),
-    peakFreqSlider(*processorRef.apvts.getParameter("Peak Freq"), "Hz"),
-    peakGainSlider(*processorRef.apvts.getParameter("Peak Gain"), "dB"),
-    peakQualitySlider(*processorRef.apvts.getParameter("Peak Quality"), ""),
-    lowCutFreqSlider(*processorRef.apvts.getParameter("LowCut Freq"), "Hz"),
-    highCutFreqSlider(*processorRef.apvts.getParameter("HighCut Freq"), "Hz"),
-    lowCutSlopeSlider(*processorRef.apvts.getParameter("LowCut Slope"), "dB/Oct"),
-    highCutSlopeSlider(*processorRef.apvts.getParameter("HighCut Slope"), "db/Oct"),
+//    peakFreqSlider(*processorRef.apvts.getParameter("Peak Freq"), "Hz"),
+//    peakGainSlider(*processorRef.apvts.getParameter("Peak Gain"), "dB"),
+//    peakQualitySlider(*processorRef.apvts.getParameter("Peak Quality"), ""),
+//    lowCutFreqSlider(*processorRef.apvts.getParameter("LowCut Freq"), "Hz"),
+//    highCutFreqSlider(*processorRef.apvts.getParameter("HighCut Freq"), "Hz"),
+//    lowCutSlopeSlider(*processorRef.apvts.getParameter("LowCut Slope"), "dB/Oct"),
+//    highCutSlopeSlider(*processorRef.apvts.getParameter("HighCut Slope"), "db/Oct"),
     peakLinearGainSlider(),
 
     responseCurveComponent(processorRef),
 
-    peakFreqSliderAttachment(processorRef.apvts, "Peak Freq", peakFreqSlider),
-    peakGainSliderAttachment(processorRef.apvts, "Peak Gain", peakGainSlider),
-    peakQualitySliderAttachment(processorRef.apvts, "Peak Quality", peakQualitySlider),
-    lowCutFreqSliderAttachment(processorRef.apvts, "LowCut Freq", lowCutFreqSlider),
-    highCutFreqSliderAttachment(processorRef.apvts, "HighCut Freq", highCutFreqSlider),
-    lowCutSlopeSliderAttachment(processorRef.apvts, "LowCut Slope", lowCutSlopeSlider),
-    highCutSlopeSliderAttachment(processorRef.apvts, "HighCut Slope", highCutSlopeSlider),
-    peakLinearGainSliderAttachment(processorRef.apvts, "Peak Gain", peakLinearGainSlider),
+//    peakFreqSliderAttachment(processorRef.apvts, "Peak Freq", peakFreqSlider),
+//    peakGainSliderAttachment(processorRef.apvts, "Peak Gain", peakGainSlider),
+//    peakQualitySliderAttachment(processorRef.apvts, "Peak Quality", peakQualitySlider),
+//    lowCutFreqSliderAttachment(processorRef.apvts, "LowCut Freq", lowCutFreqSlider),
+//    highCutFreqSliderAttachment(processorRef.apvts, "HighCut Freq", highCutFreqSlider),
+//    lowCutSlopeSliderAttachment(processorRef.apvts, "LowCut Slope", lowCutSlopeSlider),
+//    highCutSlopeSliderAttachment(processorRef.apvts, "HighCut Slope", highCutSlopeSlider),
+    peakLinearGainSliderAttachment(processorRef.apvts, "Peak Master Gain", peakLinearGainSlider),
 
-    lowcutBypassButtonAttachment(processorRef.apvts, "LowCut Bypassed", lowcutBypassButton),
-    peakBypassButtonAttachment(processorRef.apvts, "Peak Bypassed", peakBypassButton),
-    highcutBypassButtonAttachment(processorRef.apvts, "HighCut Bypassed", highcutBypassButton),
-    analyzerEnabledButtonAttachment(processorRef.apvts, "Analyzer Enabled", analyzerEnabledButton)
+//    lowcutBypassButtonAttachment(processorRef.apvts, "LowCut Bypassed", lowcutBypassButton),
+    peakBypassButtonAttachment(processorRef.apvts, "Bypass All", peakBypassButton)
+//    highcutBypassButtonAttachment(processorRef.apvts, "HighCut Bypassed", highcutBypassButton),
+//    analyzerEnabledButtonAttachment(processorRef.apvts, "Analyzer Enabled", analyzerEnabledButton)
    
 {
   juce::ignoreUnused(processorRef);
@@ -604,33 +576,6 @@ EglofAudioProcessorEditor::EglofAudioProcessorEditor(
         addAndMakeVisible (&openButton);
         openButton.setColumnMenus(&dataColumnMenu1, &dataColumnMenu2, &dataColumnMenu3, &dataColumnMenu4);
         openButton.setButtonText("Click to choose a CSV!");
-//        addAndMakeVisible(&qRangeSlider);
-//
-//        qRangeSlider.setSliderStyle(juce::Slider::SliderStyle::Rotary);
-//        qRangeSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, readOnly, textBoxSizeX, textBoxSizeY);
-//        qRangeSlider.setRange(0.1, 10, 0.1);
-//        qRangeSlider.setValue(1);
-//
-//        addAndMakeVisible(&gainRangeSlider);
-//        gainRangeSlider.setSliderStyle(juce::Slider::SliderStyle::Rotary);
-//        gainRangeSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, readOnly, textBoxSizeX, textBoxSizeY);
-//        gainRangeSlider.setRange(-6, 6, 0.1);
-//        gainRangeSlider.setValue(0);
-//        gainRangeSlider.setTextValueSuffix("Db");
-//
-//        addAndMakeVisible(&cutoffRangeSlider);
-//        cutoffRangeSlider.setSliderStyle(juce::Slider::SliderStyle::Rotary);
-//        cutoffRangeSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, readOnly, textBoxSizeX, textBoxSizeY);
-//        cutoffRangeSlider.setRange(20, 20000, 1);
-//        cutoffRangeSlider.setValue(20);
-//        cutoffRangeSlider.setTextValueSuffix("Hz");
-//
-//        addAndMakeVisible(&resonanceRangeSlider);
-//        resonanceRangeSlider.setSliderStyle(juce::Slider::SliderStyle::Rotary);
-//        resonanceRangeSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, readOnly, textBoxSizeX, textBoxSizeY);
-//        resonanceRangeSlider.setRange(0, 1, 0.01);
-//        resonanceRangeSlider.setValue(0);
-        
         addAndMakeVisible(&presetMenu);
         presetMenu.setText("Default Preset");
         
@@ -643,12 +588,6 @@ EglofAudioProcessorEditor::EglofAudioProcessorEditor(
         addAndMakeVisible(&dataColumnMenu4);
         dataColumnMenu4.setText("Resonance Mapping");
         
-//        float powerButtonSize = 50.f;
-//        juce::Path powerButtonShape;
-//        powerButtonShape.addRectangle(0, 0, powerButtonSize, powerButtonSize);
-//        powerButton.setShape(powerButtonShape, true, true, false);
-//        addAndMakeVisible(&powerButton);
-        
         addAndMakeVisible(&forwardPresetButton);
         addAndMakeVisible(&backwardPresetButton);
         addAndMakeVisible(&compareButton);
@@ -658,26 +597,10 @@ EglofAudioProcessorEditor::EglofAudioProcessorEditor(
         addAndMakeVisible(&chooseRandomDataButton);
         addAndMakeVisible(&downloadCSVButton);
     
-//        peakFreqSlider.labels.add({0.f, "20Hz"});
-//        peakFreqSlider.labels.add({1.f, "20kHz"});
         
-        peakGainSlider.labels.add({0.f, "-24dB"});
-        peakGainSlider.labels.add({1.f, "+24dB"});
+//        peakGainSlider.labels.add({0.f, "-24dB"});
+//        peakGainSlider.labels.add({1.f, "+24dB"});
         
-//        peakQualitySlider.labels.add({0.f, "0.1"});
-//        peakQualitySlider.labels.add({1.f, "10.0"});
-//
-//        lowCutFreqSlider.labels.add({0.f, "20Hz"});
-//        lowCutFreqSlider.labels.add({1.f, "20kHz"});
-//
-//        highCutFreqSlider.labels.add({0.f, "20Hz"});
-//        highCutFreqSlider.labels.add({1.f, "20kHz"});
-//
-//        lowCutSlopeSlider.labels.add({0.0f, "12"});
-//        lowCutSlopeSlider.labels.add({1.f, "48"});
-//
-//        highCutSlopeSlider.labels.add({0.0f, "12"});
-//        highCutSlopeSlider.labels.add({1.f, "48"});
         
         for( auto* comp : getComps() )
         {
@@ -691,47 +614,14 @@ EglofAudioProcessorEditor::EglofAudioProcessorEditor(
             {
                 auto bypassed = comp->peakBypassButton.getToggleState();
                 
-                comp->peakFreqSlider.setEnabled( !bypassed );
-                comp->peakGainSlider.setEnabled( !bypassed );
-                comp->peakQualitySlider.setEnabled( !bypassed );
+//                comp->peakFreqSlider.setEnabled( !bypassed );
+//                comp->peakGainSlider.setEnabled( !bypassed );
+//                comp->peakQualitySlider.setEnabled( !bypassed );
                 comp->peakLinearGainSlider.setEnabled( !bypassed );
             }
         };
     
         peakLinearGainSlider.setRange(-24, 24);
-        
-//
-//        lowcutBypassButton.onClick = [safePtr]()
-//        {
-//            if( auto* comp = safePtr.getComponent() )
-//            {
-//                auto bypassed = comp->lowcutBypassButton.getToggleState();
-//
-//                comp->lowCutFreqSlider.setEnabled( !bypassed );
-//                comp->lowCutSlopeSlider.setEnabled( !bypassed );
-//            }
-//        };
-//
-//        highcutBypassButton.onClick = [safePtr]()
-//        {
-//            if( auto* comp = safePtr.getComponent() )
-//            {
-//                auto bypassed = comp->highcutBypassButton.getToggleState();
-//
-//                comp->highCutFreqSlider.setEnabled( !bypassed );
-//                comp->highCutSlopeSlider.setEnabled( !bypassed );
-//            }
-//        };
-//
-//        analyzerEnabledButton.onClick = [safePtr]()
-//        {
-//            if( auto* comp = safePtr.getComponent() )
-//            {
-//                auto enabled = comp->analyzerEnabledButton.getToggleState();
-//                comp->responseCurveComponent.toggleAnalysisEnablement(enabled);
-//            }
-//        };
-//
 }
 
 EglofAudioProcessorEditor::~EglofAudioProcessorEditor() {}
@@ -740,19 +630,8 @@ std::vector<juce::Component*> EglofAudioProcessorEditor::getComps()
 {
     return
     {
-//        &peakFreqSlider,
-//        &peakGainSlider,
-//        &peakQualitySlider,
-//        &lowCutFreqSlider,
-//        &highCutFreqSlider,
-//        &lowCutSlopeSlider,
-//        &highCutSlopeSlider,
         &responseCurveComponent,
-        
-//        &lowcutBypassButton,
         &peakBypassButton,
-//        &highcutBypassButton,
-//        &analyzerEnabledButton,
         &peakLinearGainSlider
     };
 }
@@ -792,22 +671,10 @@ void EglofAudioProcessorEditor::paint(juce::Graphics& g) {
     responseCurve.lineTo(static_cast<size_t>(responseArea.getX() - 3) + i, magnitudes[i] + getWidth()/2);
   }
 
-//  g.setColour(juce::Colours::black);
-//  g.fillRoundedRectangle(responseArea.toFloat(),4);
-//  g.setColour(juce::Colours::orange);
-//  g.drawRoundedRectangle(responseArea.toFloat(), 4, 1);
-//  g.setColour(juce::Colours::white);
-//  g.strokePath(responseCurve, juce::PathStrokeType(2));
-    
-//  g.drawImage(background, getLocalBounds().toFloat());
-    
   g.setColour(juce::Colour(140u, 82u, 255u));
   g.setFont(15.0f);
-//  g.drawText("Q", getWidth()/40, 15, 60, 175, juce::Justification::left);
-  g.drawText("Cut Gain", getWidth()/40 + 150, 15, 120, 200, juce::Justification::centredLeft);
-//  g.drawText("Cutoff", getWidth()/40 + 300, 15, 60, 175, juce::Justification::left);
-//  g.drawText("Resonance", getWidth()/40 + 440, 15, 100, 175, juce::Justification::left);
-    
+  g.drawText("Gain", getWidth()/40 + 150, 15, 120, 200, juce::Justification::centredLeft);
+
     
   g.setColour(juce::Colour(255u, 154u, 1u));
   g.setColour(juce::Colours::grey);
@@ -829,88 +696,10 @@ void EglofAudioProcessorEditor::resized() {
     juce::ignoreUnused(dialWidth);
     juce::ignoreUnused(dialHeight);
     juce::ignoreUnused(gapY);
-//    background = juce::Image(juce::Image::PixelFormat::RGB, getWidth(), getHeight(), true);
-//    juce::Graphics g(background);
-//    juce::Array<float> freqs
-//    {
-//        20, 30, 40, 50, 100,
-//        200, 300, 400, 500, 1000,
-//        2000, 3000, 4000, 5000, 10000,
-//        20000
-//    };
-//    juce::Array<float> gain
-//    {
-//        -240, -120, 0, 120, 240
-//    };
-//
-//    g.setColour(juce::Colours::greenyellow);
-//    const int fontHeight = 10;
-//    g.setFont(fontHeight);
-//
-//    for(auto f : freqs)
-//    {
-//        bool addK = false;
-//        std::string suff;
-//        auto normX = f;
-//        g.drawVerticalLine(static_cast<int>(normX), getHeight()/3, getHeight());
-//        if (f > 999)
-//        {
-//            addK = true;
-//            f /= 1000;
-//        }
-//        std::stringstream freqLabelSS;
-//        freqLabelSS << suff << f;
-//        if (addK)
-//        {
-//            freqLabelSS << suff << "k";
-//        }
-//        freqLabelSS << suff << "Hz";
-//
-//        std::string freqLabel = freqLabelSS.str();
-//
-//        g.drawText(freqLabel, static_cast<int>(normX), getHeight()/3, 100, 100, juce::Justification::centred, false);
-//    }
-//
-//    for(auto gainDb : gain)
-//    {
-//        auto normY = gainDb + getWidth()/2;
-//        g.setColour(std::abs(gainDb) <= 0 ? juce::Colours::pink : juce::Colour(0u, 172u, 1u));
-//        g.drawHorizontalLine(static_cast<int>(normY), 0, getWidth());
-//        std::string pref;
-//        std::string suff;
-//        int addNeg = false;
-//        if (gainDb > 0)
-//        {
-//            addNeg = true;
-//        }
-//        std::stringstream gainLabelSS;
-//        if (addNeg)
-//        {
-//            gainLabelSS << "-";
-//            gainLabelSS << gainDb/10;
-//        } else {
-//            gainLabelSS << gainDb/10;
-//        }
-//        gainLabelSS << suff << "Db";
-//        std::string gainLabel = gainLabelSS.str();
-//
-//        g.drawText(gainLabel, 0, static_cast<int>(normY), 100, 100, juce::Justification::centred, false);
-//    }
-   /*qRangeSlider.setBounds(marginX, marginY, dialWidth, dialHeight);
-    gainRangeSlider.setBounds(marginX + gapX, marginY, dialWidth, dialHeight);
-    cutoffRangeSlider.setBounds(marginX + 2 * gapX, marginY, dialWidth, dialHeight);
-    resonanceRangeSlider.setBounds(marginX + 3 * gapX, marginY, dialWidth, dialHeight);*/
+
     auto bounds = getLocalBounds();
     bounds.removeFromTop(4);
     
-//    auto analyzerEnabledArea = bounds.removeFromTop(25);
-//
-//
-//    analyzerEnabledArea.setWidth(50);
-//    analyzerEnabledArea.setX(5);
-//    analyzerEnabledArea.removeFromBottom(2);
-//
-//    analyzerEnabledButton.setBounds(analyzerEnabledArea);
     
     bounds.removeFromTop(5);
     
@@ -922,38 +711,18 @@ void EglofAudioProcessorEditor::resized() {
     
     bounds.removeFromTop(5);
     
-//    auto lowCutArea = bounds.removeFromLeft(bounds.getWidth()/3);
-//    auto highCutArea = bounds.removeFromRight(bounds.getWidth()/2);
-//
-//    lowcutBypassButton.setBounds(lowCutArea.removeFromTop(25));
-//    lowCutFreqSlider.setBounds(lowCutArea.removeFromTop(lowCutArea.getHeight()/2));
-//    lowCutSlopeSlider.setBounds(lowCutArea);
-//
-//    highcutBypassButton.setBounds(highCutArea.removeFromTop(25));
-//    highCutFreqSlider.setBounds(highCutArea.removeFromTop(highCutArea.getHeight()/2));
-//    highCutSlopeSlider.setBounds(highCutArea);
     peakLinearGainSlider.setBounds(backwardPresetButton.getX() + 100, backwardPresetButton.getY() + 125, 4*getWidth()/10, 50);
     peakBypassButton.setBounds(-30,-30, getWidth()/10, getWidth()/10);
-//    peakFreqSlider.setBounds(bounds.removeFromTop(bounds.getHeight()/3));
-//    peakGainSlider.setBounds(getWidth()/4, getHeight()/8, getWidth()/8, getHeight()/8);
-//    peakQualitySlider.setBounds(bounds);
     openButton.setBounds (1000, 35, 190, 200);
     
     presetMenu.setBounds(marginX + gapX/3, marginY - 80, menuWidth, menuHeight);
 //    dataColumnMenu1.setBounds(marginX + 4 * gapX + 15, marginY, menuWidth/2, menuHeight);
-    dataColumnMenu2.setBounds((peakFreqSlider.getX() + openButton.getX())/2 + getWidth()/10, peakLinearGainSlider.getY() + 5, menuWidth + gapX/2, menuHeight);
-//    dataColumnMenu3.setBounds(marginX + 4 * gapX + 15, marginY + gapY, menuWidth/2, menuHeight);
-//    dataColumnMenu4.setBounds(marginX + 5 * gapX + 30, marginY + gapY, menuWidth/2, menuHeight);
-//
-//    powerButton.setBounds(0, 0, getWidth()/10, getWidth()/10);
+    dataColumnMenu2.setBounds((peakLinearGainSlider.getX() + openButton.getX())/2 + getWidth()/10, peakLinearGainSlider.getY() + 5, menuWidth + gapX/2, menuHeight);
     backwardPresetButton.setBounds(presetMenu.getX(), 11 * presetMenu.getY()/2, presetMenu.getWidth()/6, presetMenu.getHeight());
     forwardPresetButton.setBounds(presetMenu.getX() + gapX/3, 11 * presetMenu.getY()/2, presetMenu.getWidth()/6, presetMenu.getHeight());
     compareButton.setBounds(presetMenu.getX() + 2 * gapX/3, 11 * presetMenu.getY()/2, presetMenu.getWidth()/3, presetMenu.getHeight());
     copyButton.setBounds(presetMenu.getX() + 4 * gapX/3, 11 * presetMenu.getY()/2, presetMenu.getWidth()/6, presetMenu.getHeight());
     pasteButton.setBounds(presetMenu.getX() + 5 * gapX/3, 11 * presetMenu.getY()/2, presetMenu.getWidth()/6, presetMenu.getHeight());
-/*    helpButton.setBounds(dataColumnMenu1.getX(), dataColumnMenu1.getY() - gapY, dataColumnMenu1.getWidth(), dataColumnMenu1.getHeight())*/;
-//    downloadCSVButton.setBounds(dataColumnMenu2.getX(), dataColumnMenu2.getY() - gapY, dataColumnMenu2.getWidth(), dataColumnMenu2.getHeight());
-//    chooseRandomDataButton.setBounds(dataColumnMenu1.getX(), dataColumnMenu1.getY() + 2 * gapY, 2 * dataColumnMenu1.getWidth() + 25, dataColumnMenu1.getHeight() + 10);
 }
 
 }  // namespace audio_plugin

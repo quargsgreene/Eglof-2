@@ -19,7 +19,6 @@ enum FFTOrder
     order8192 = 13
 };
 
-
 namespace audio_plugin {
 
 template<typename BlockType>
@@ -250,6 +249,8 @@ juce::Timer
     {
         shouldShowFFTAnalysis = enabled;
     }
+    void updateChain() {updateChainImpl(std::make_index_sequence<CSV_MAX_ROWS>{});}
+    void updateResponseCurve() {updateResponseCurveImpl(std::make_index_sequence<CSV_MAX_ROWS>{});}
 private:
     EglofAudioProcessor& audioProcessor;
 
@@ -258,13 +259,14 @@ private:
     juce::Atomic<bool> parametersChanged { false };
     
     MonoChain monoChain;
-
-    void updateResponseCurve();
+    
+    template<std::size_t... I>
+    void updateResponseCurveImpl(std::index_sequence<I...>);
     
     juce::Path responseCurve;
     
     template<std::size_t... I>
-    void updateChain();
+    void updateChainImpl(std::index_sequence<I...>);
     
     void drawBackgroundGrid(juce::Graphics& g);
     void drawTextLabels(juce::Graphics& g);
@@ -300,54 +302,23 @@ public:
     AddCsv openButton;
     LookAndFeel uiAesthetic;
 private:
-    // This reference is provided as a quick way for your editor to
-    // access the processor object that created it.
-//    juce::Slider qRangeSlider;
-//    juce::Slider gainRangeSlider;
-//    juce::Slider cutoffRangeSlider;
-//    juce::Slider resonanceRangeSlider;
     EglofAudioProcessor& processorRef;
-    
-    RotarySliderWithLabels peakFreqSlider,
-    peakGainSlider,
-    peakQualitySlider,
-    lowCutFreqSlider,
-    highCutFreqSlider,
-    lowCutSlopeSlider,
-    highCutSlopeSlider;
-    
     juce::Slider peakLinearGainSlider;
-    
     ResponseCurveComponent responseCurveComponent;
     
     using APVTS = juce::AudioProcessorValueTreeState;
     using Attachment = APVTS::SliderAttachment;
     
-    Attachment peakFreqSliderAttachment,
-                peakGainSliderAttachment,
-                peakQualitySliderAttachment,
-                lowCutFreqSliderAttachment,
-                highCutFreqSliderAttachment,
-                lowCutSlopeSliderAttachment,
-                highCutSlopeSliderAttachment,
-                peakLinearGainSliderAttachment
-    ;
-    
-    
-    
-//    juce::ComponentPeer * createNewPeer(int styleFlags, void *) override;
+    Attachment  peakLinearGainSliderAttachment;
+
 
     std::vector<juce::Component*> getComps();
     
-    LookAndFeel::PowerButton lowcutBypassButton, peakBypassButton, highcutBypassButton;
-    LookAndFeel::AnalyzerButton analyzerEnabledButton;
+    LookAndFeel::PowerButton peakBypassButton;
     
     using ButtonAttachment = APVTS::ButtonAttachment;
     
-    ButtonAttachment lowcutBypassButtonAttachment,
-                        peakBypassButtonAttachment,
-                        highcutBypassButtonAttachment,
-                        analyzerEnabledButtonAttachment;
+    ButtonAttachment peakBypassButtonAttachment;
     
     CsvColumnSelectionDropdown presetMenu;
 

@@ -112,7 +112,8 @@ void EglofAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     leftChain.prepare(spec);
     rightChain.prepare(spec);
     
-    updateFilters();
+//    constexpr size_t CSV_MAX_ROWS_SIZE_T = 1000;
+    updateFilters(std::make_index_sequence<CSV_MAX_ROWS>{});
     
     leftChannelFifo.prepare(samplesPerBlock);
     rightChannelFifo.prepare(samplesPerBlock);
@@ -172,19 +173,10 @@ void EglofAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-    updateFilters();
+//    constexpr size_t CSV_MAX_ROWS_SIZE_T = 1000;
+    updateFilters(std::make_index_sequence<CSV_MAX_ROWS>{});
     
     juce::dsp::AudioBlock<float> block(buffer);
-    
-//    buffer.clear();
-//
-//    for( int i = 0; i < buffer.getNumSamples(); ++i )
-//    {
-//        buffer.setSample(0, i, osc.processSample(0));
-//    }
-//
-//    juce::dsp::ProcessContextReplacing<float> stereoContext(block);
-//    osc.process(stereoContext);
     
     auto leftBlock = block.getSingleChannelBlock(0);
     auto rightBlock = block.getSingleChannelBlock(1);
@@ -231,167 +223,165 @@ void EglofAudioProcessor::setStateInformation (const void* data, int sizeInBytes
     if( tree.isValid() )
     {
         apvts.replaceState(tree);
-        updateFilters();
+//        constexpr size_t CSV_MAX_ROWS_SIZE_T = 1000;
+        updateFilters(std::make_index_sequence<CSV_MAX_ROWS>{});
     }
 }
+
 
 void initializeChainSettings ()
   {
     
-        for (int i = 0; i < CSV_MAX_ROWS; ++i)
+        for (size_t i = 0; i < CSV_MAX_ROWS; ++i)
         {
-            chainSettings.insert({std::make_pair(0.f, 0.f), std::make_pair(100.f, false)});
+            chainSettings.push_back({0.0f, 0.0f, 0.0f, false});
         }
+    
 
 }
 
 
-std::map<std::pair<std::atomic< float >*,std::atomic< float >*>, std::pair<std::atomic< float >*, std::atomic< float >*>> getChainSettings(juce::AudioProcessorValueTreeState& apvts)
+
+std::vector<Peak> getChainSettings(juce::AudioProcessorValueTreeState& apvts)
 {
+    auto loadFloat = [](std::atomic<float>* param) -> float {return param ? param->load() : 0.f;};
+    auto loadBool = [](std::atomic<float>* param) -> bool {return param && param->load() >= 0.5f;};
 //    ChainSettings settings;
      // retrieve each setting from apvts and name it
-    std::map<std::pair<std::atomic< float >*,std::atomic< float >*>, std::pair<std::atomic< float >*, std::atomic< float >*>> settings;
+//    std::map<std::pair<std::atomic< float >*,std::atomic< float >*>, std::pair<std::atomic< float >*, std::atomic< float >*>> settings;
+//    std::map<std::pair<float, float>, std::pair<float, bool>> settings;
+    std::vector<Peak>settings;
     
-    for (int i = 0; i < CSV_MAX_ROWS; ++i)
+    for (size_t i = 0; i < CSV_MAX_ROWS; ++i)
     {
-        settings.insert({std::make_pair(apvts.getRawParameterValue(std::format("Peak Freq {}", i)),apvts.getRawParameterValue(std::format("Peak Gain {}", i))), std::make_pair(apvts.getRawParameterValue(std::format("Peak Quality {}", i)), apvts.getRawParameterValue(std::format("Peak {} Bypassed", i)))});
+//        settings.insert({std::make_pair(apvts.getRawParameterValue(std::format("Peak Freq {}", i)),apvts.getRawParameterValue(std::format("Peak Gain {}", i))), std::make_pair(apvts.getRawParameterValue(std::format("Peak Quality {}", i)), apvts.getRawParameterValue(std::format("Peak Bypassed {}", i)))});
+//settings.emplace(std::make_pair(loadFloat(apvts.getRawParameterValue(std::format("Peak Freq {}", i))), loadFloat(apvts.getRawParameterValue(std::format("Peak Gain {}", i)))), std::make_pair(loadFloat(apvts.getRawParameterValue(std::format("Peak Quality {}", i))), loadBool(apvts.getRawParameterValue(std::format("Peak Bypassed {}", i)))));
+        settings.push_back({loadFloat(apvts.getRawParameterValue(std::format("Peak Freq {}", i))),loadFloat(apvts.getRawParameterValue(std::format("Peak Gain {}", i))),
+            loadFloat(apvts.getRawParameterValue(std::format("Peak Quality {}", i))),
+            loadBool (apvts.getRawParameterValue(std::format("Peak Bypassed {}", i)))});
     }
-//
-//    settings.lowCutFreq = apvts.getRawParameterValue("LowCut Freq")->load();
-//    settings.highCutFreq = apvts.getRawParameterValue("HighCut Freq")->load();
-//    settings.peakFreq = apvts.getRawParameterValue("Peak Freq")->load();
-//    settings.peakFreq2 = apvts.getRawParameterValue("Peak Freq 2")->load();
-//    settings.peakGainInDecibels = apvts.getRawParameterValue("Peak Gain")->load();
-//    settings.peakQuality = apvts.getRawParameterValue("Peak Quality")->load();
-//    settings.peak2Quality = apvts.getRawParameterValue("Peak 2 Quality")->load();
-//    settings.lowCutSlope = static_cast<Slope>(apvts.getRawParameterValue("LowCut Slope")->load());
-//    settings.highCutSlope = static_cast<Slope>(apvts.getRawParameterValue("HighCut Slope")->load());
-//    
-//    settings.lowCutBypassed = apvts.getRawParameterValue("LowCut Bypassed")->load() > 0.5f;
-//    settings.peakBypassed = apvts.getRawParameterValue("Peak Bypassed")->load() > 0.5f;
-//    settings.peak2Bypassed = apvts.getRawParameterValue("Peak 2 Bypassed")->load() > 0.5f;
-//    settings.highCutBypassed = apvts.getRawParameterValue("HighCut Bypassed")->load() > 0.5f;
-//    
+    
+    std::cout<<"Band0 freq="<<settings[0].freq<<std::endl;
+    std::cout<<"Q="<<settings[0].Q<<std::endl;
+    std::cout<<"gain="<<settings[0].gain<<std::endl;
+    std::cout<<"bypass="<<settings[0].bypass<<std::endl;
+
      return settings;
 }
 
-std::vector<Coefficients> makePeakFilters(const std::map<std::pair<float, float>, std::pair<float, bool>>& currentChainSettings, double sampleRate)
+
+
+std::vector<Coefficients> makePeakFilters(const std::vector<Peak>& currentChainSettings, double sampleRate, float masterGainDb)
 {
     std::vector<Coefficients> filters;
-    for (const auto& [freqGainPair, qBypassedPair]: currentChainSettings)
-    {
-        filters.push_back((juce::dsp::IIR::Coefficients<float>::makePeakFilter(sampleRate,
-                                                                               freqGainPair.first,
-                                                                               qBypassedPair.first,
-                                                                               juce::Decibels::decibelsToGain(freqGainPair.second))));
+//    for (const auto& [freqGainPair, qBypassedPair]: currentChainSettings)
+//    {
+//        filters.push_back((juce::dsp::IIR::Coefficients<float>::makePeakFilter(sampleRate,
+//                                                                               freqGainPair.first,
+//                                                                               qBypassedPair.first,
+//                                                                               juce::Decibels::decibelsToGain(freqGainPair.second))));
+//    }
+    
+//
+
+    
+    for(size_t i = 0; i < static_cast<size_t>(currentChainSettings.size()); ++i){
+        if (currentChainSettings[i].freq <=0)
+        {
+            continue;
+        }
+        const float totalGain = juce::jlimit(-24.f, 24.f, currentChainSettings[i].gain + masterGainDb);
+        filters.push_back(juce::dsp::IIR::Coefficients<float>::makePeakFilter(sampleRate, currentChainSettings[i].freq, currentChainSettings[i].Q, juce::Decibels::decibelsToGain(totalGain)));
     }
-//    return juce::dsp::IIR::Coefficients<float>::makePeakFilter(sampleRate,
-//                                                               chainSettings.peakFreq,
-//                                                               chainSettings.peakQuality,
-//                                                               juce::Decibels::decibelsToGain(chainSettings.peakGainInDecibels));
     return filters;
+
 }
 
-//Coefficients makePeakFilter2(const ChainSettings& chainSettings, double sampleRate)
-//{
-//    return juce::dsp::IIR::Coefficients<float>::makePeakFilter(sampleRate,
-//                                                               chainSettings.peakFreq2,
-//                                                               chainSettings.peak2Quality,
-//                                                               juce::Decibels::decibelsToGain(chainSettings.peakGainInDecibels));
-//}
-//
-//void EglofAudioProcessor::updatePeakFilter(const ChainSettings &chainSettings)
-//{
-//    auto peakCoefficients = makePeakFilter(chainSettings, getSampleRate());
-//    //make into loop
-//    leftChain.setBypassed<ChainPositions::Peak>(chainSettings.peakBypassed);
-//    rightChain.setBypassed<ChainPositions::Peak>(chainSettings.peakBypassed);
-//
-//    updateCoefficients(leftChain.get<ChainPositions::Peak>().coefficients, peakCoefficients);
-//    updateCoefficients(rightChain.get<ChainPositions::Peak>().coefficients, peakCoefficients);
-//}
-//
 template<std::size_t... I>
-void EglofAudioProcessor::updatePeakFilters(const std::map<std::pair<float, float>, std::pair<float, bool>>& currentChainSettings, std::index_sequence<I...>)
+void EglofAudioProcessor::updatePeakFilters(const std::vector<Peak>& currentChainSettings, std::index_sequence<I...>)
 {
-    auto peakCoefficients = makePeakFilters(currentChainSettings, getSampleRate());
-    std::vector<bool> bypassedSettings;
-    for (const auto& [gainFreqPair, qBypassPair] : currentChainSettings)
+    float gainOffsetDb = 0.f;
+    bool  allBypassed = false;
+    auto* masterGainParam = apvts.getRawParameterValue("Peak Master Gain");
+    auto* bypassAllParam = apvts.getRawParameterValue("Bypass All");
+    
+    if (masterGainParam)
     {
-        bypassedSettings.push_back(qBypassPair.second);
+        gainOffsetDb = masterGainParam ->load();
+        std::cout<<"Master=" <<gainOffsetDb<<std::endl;
     }
+    
+    if(bypassAllParam)
+    {
+        allBypassed = static_cast<bool>(bypassAllParam ->load());
+        std::cout<<"All Bypassed="<<allBypassed<<std::endl;
+    }
+    
+    std::vector<Coefficients> peakCoefficients = makePeakFilters(currentChainSettings, getSampleRate(), gainOffsetDb);
+    std::vector<bool> bypassedSettings;
+    bypassedSettings.reserve(currentChainSettings.size());
+    std::vector<float> frequencySettings;
+    frequencySettings.reserve(currentChainSettings.size());
+    std::vector<float> qSettings;
+    qSettings.reserve(currentChainSettings.size());
+    std::vector<float> gainSettings;
+    gainSettings.reserve(currentChainSettings.size());
+    
+    for (size_t i = 0; i < static_cast<size_t>(currentChainSettings.size()); ++i)
+    {
+        bypassedSettings.push_back(currentChainSettings[i].freq <=0.f ? true : currentChainSettings[i].bypass);
+        frequencySettings.push_back(currentChainSettings[i].freq);
+        gainSettings.push_back(currentChainSettings[i].gain);
+        qSettings.push_back(currentChainSettings[i].Q);
+    }
+    
 
     (leftChain.setBypassed<I>(bypassedSettings[I]),...);
     (rightChain.setBypassed<I>(bypassedSettings[I]),...);
     
-    (updateCoefficients(leftChain.get<I>(), peakCoefficients),...);
-    (updateCoefficients(rightChain.get<I>(), peakCoefficients),...);
-}
-//void EglofAudioProcessor::updatePeakFilter2(const ChainSettings &chainSettings)
-//{
-//    auto peakCoefficients = makePeakFilter2(chainSettings, getSampleRate());
-//    
-//    leftChain.setBypassed<ChainPositions::Peak2>(chainSettings.peak2Bypassed);
-//    rightChain.setBypassed<ChainPositions::Peak2>(chainSettings.peak2Bypassed);
-//    
-//    updateCoefficients(leftChain.get<ChainPositions::Peak2>().coefficients, peakCoefficients);
-//    updateCoefficients(rightChain.get<ChainPositions::Peak2>().coefficients, peakCoefficients);
-//}
+//    for(size_t i = 0; i <std::min<size_t>(CSV_MAX_ROWS, peakCoefficients.size()); ++i)
+//    {
+//        (updateCoefficients(leftChain.get<I>().coefficients, peakCoefficients[i]),...);
+//        (updateCoefficients(rightChain.get<I>().coefficients, peakCoefficients[i]),...);
+//
+//    }
+    ([&](){
+        if(I < peakCoefficients.size() && peakCoefficients[I] != nullptr)
+        {
+                    (updateCoefficients(leftChain.get<I>().coefficients, peakCoefficients[I]),...);
+                    (updateCoefficients(rightChain.get<I>().coefficients, peakCoefficients[I]),...);
+        }
+    }(),...);
 
-void updateCoefficients(std::vector<Coefficients>& old, const std::vector<Coefficients>& replacements)
+}
+
+
+void updateCoefficients(Coefficients& old, const Coefficients& replacements)
 {
-    for (size_t i = 0; i < old.size(); ++i)
-    {
-        *old[i] = *replacements[i];
-    }
+        *old = *replacements;
 }
 
-//void EglofAudioProcessor::updateLowCutFilters(const ChainSettings &chainSettings)
-//{
-//    auto cutCoefficients = makeLowCutFilter(chainSettings, getSampleRate());
-//    auto& leftLowCut = leftChain.get<ChainPositions::LowCut>();
-//    auto& rightLowCut = rightChain.get<ChainPositions::LowCut>();
-//    
-//    leftChain.setBypassed<ChainPositions::LowCut>(chainSettings.lowCutBypassed);
-//    rightChain.setBypassed<ChainPositions::LowCut>(chainSettings.lowCutBypassed);
-//    
-//    updateCutFilter(rightLowCut, cutCoefficients, chainSettings.lowCutSlope);
-//    updateCutFilter(leftLowCut, cutCoefficients, chainSettings.lowCutSlope);
-//}
 
-//void EglofAudioProcessor::updateHighCutFilters(const ChainSettings &chainSettings)
-//{
-//    auto highCutCoefficients = makeHighCutFilter(chainSettings, getSampleRate());
-//    
-//    auto& leftHighCut = leftChain.get<ChainPositions::HighCut>();
-//    auto& rightHighCut = rightChain.get<ChainPositions::HighCut>();
-//    
-//    leftChain.setBypassed<ChainPositions::HighCut>(chainSettings.highCutBypassed);
-//    rightChain.setBypassed<ChainPositions::HighCut>(chainSettings.highCutBypassed);
-//    
-//    updateCutFilter(leftHighCut, highCutCoefficients, chainSettings.highCutSlope);
-//    updateCutFilter(rightHighCut, highCutCoefficients, chainSettings.highCutSlope);
-//}
-
-void EglofAudioProcessor::updateFilters()
+template<std::size_t... I>
+void EglofAudioProcessor::updateFilters(std::index_sequence<I...> seq)
 {
     auto currentChainSettings = getChainSettings(apvts);
-    
-//    updateLowCutFilters(chainSettings);
-    updatePeakFilters(chainSettings);
-//    updateHighCutFilters(chainSettings);
+      updatePeakFilters(currentChainSettings, seq);
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout EglofAudioProcessor::createParameterLayout()
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
-    
-//    settings.insert({apvts.getRawParameterValue(std::format("Peak Freq {}", i)), std::make_pair(apvts.getRawParameterValue(std::format("Peak Quality {}", i)), apvts.getRawParameterValue(std::format("Peak {} Bypassed", i)))});
     int testArrSize = sizeof(testFreqs)/sizeof(testFreqs[0]); // rename to generalize
+
     
-    for(int i = 0; i < CSV_MAX_ROWS; ++i)
+    layout.add(std::make_unique<juce::AudioParameterFloat>(std::format("Peak Master Gain"), std::format("Peak Master Gain"), juce::NormalisableRange<float>(-24.f, 24.f, 0.1f, 1.f), 0.f));
+    layout.add(std::make_unique<juce::AudioParameterBool>(std::format("Bypass All"), std::format("Bypass All"), false));
+    
+    for(size_t i = 0; i < CSV_MAX_ROWS; ++i)
     {
-        if(i >= 0 && i < testArrSize){
+        const bool defaultBypassed = i >= static_cast<size_t>(testArrSize);
+        if(i >= 0 && i < static_cast<size_t>(testArrSize)){
             layout.add(std::make_unique<juce::AudioParameterFloat>(std::format("Peak Freq {}", i),
                                                                   std::format("Peak Freq {}", i),
                                                                   juce::NormalisableRange<float>(20.f, 20000.f, 1.f, 0.25f), testFreqs[i]));
@@ -406,48 +396,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout EglofAudioProcessor::createP
                                                               juce::NormalisableRange<float>(-24.f, 24.f, 0.5f, 1.f), 0.f));
         layout.add(std::make_unique<juce::AudioParameterFloat>(std::format("Peak Quality {}", i),
                                                               std::format("Peak Quality {}", i),
-                                                              juce::NormalisableRange<float>(0.1f, 10.f, 0.05f, 1.f), 100.f));
-        layout.add(std::make_unique<juce::AudioParameterBool>(std::format("Peak {} Bypassed", i), std::format("Peak {} Bypassed", i), false));
-        
+                                                              juce::NormalisableRange<float>(0.1f, 10.f, 0.05f, 1.f), 1.f));
+        layout.add(std::make_unique<juce::AudioParameterBool>(std::format("Peak Bypassed {}", i), std::format("Peak Bypassed {}", i), defaultBypassed));
     }
-//    layout.add(std::make_unique<juce::AudioParameterFloat>("LowCut Freq",
-//                                                           "LowCut Freq",
-//                                                           juce::NormalisableRange<float>(20.f, 20000.f, 1.f, 0.25f),
-//                                                           200.f));
-//    
-//    layout.add(std::make_unique<juce::AudioParameterFloat>("HighCut Freq",
-//                                                           "HighCut Freq",
-//                                                           juce::NormalisableRange<float>(20.f, 20000.f, 1.f, 0.25f),
-//                                                           20000.f));
-//    
-//    layout.add(std::make_unique<juce::AudioParameterFloat>("Peak Freq",
-//                                                           "Peak Freq",
-//                                                           juce::NormalisableRange<float>(20.f, 20000.f, 1.f, 0.25f),
-//                                                           1000.f));
-//    layout.add(std::make_unique<juce::AudioParameterFloat>("Peak Freq 2",
-//                                                           "Peak Freq 2",
-//                                                           juce::NormalisableRange<float>(20.f, 20000.f, 1.f, 0.25f),
-//                                                           100.f));
-//    
-//    layout.add(std::make_unique<juce::AudioParameterFloat>("Peak Gain",
-//                                                           "Peak Gain",
-//                                                           juce::NormalisableRange<float>(-24.f, 24.f, 0.5f, 1.f),
-//                                                           0.0f));
-//    
-//    layout.add(std::make_unique<juce::AudioParameterFloat>("Peak 2 Gain",
-//                                                           "Peak 2 Gain",
-//                                                           juce::NormalisableRange<float>(-24.f, 24.f, 0.5f, 1.f),
-//                                                           0.0f));
-//    
-//    layout.add(std::make_unique<juce::AudioParameterFloat>("Peak Quality",
-//                                                           "Peak Quality",
-//                                                           juce::NormalisableRange<float>(0.1f, 10.f, 0.05f, 1.f),
-//                                                           1.f));
-//    layout.add(std::make_unique<juce::AudioParameterFloat>("Peak 2 Quality",
-//                                                           "Peak 2 Quality",
-//                                                           juce::NormalisableRange<float>(0.1f, 10.f, 0.05f, 1.f),
-//                                                           1.f));
-    
+
     juce::StringArray stringArray;
     for( int i = 0; i < 4; ++i )
     {
@@ -456,16 +408,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout EglofAudioProcessor::createP
         str << " db/Oct";
         stringArray.add(str);
     }
-    // loop with std::format
-    
-//    layout.add(std::make_unique<juce::AudioParameterChoice>("LowCut Slope", "LowCut Slope", stringArray, 0));
-//    layout.add(std::make_unique<juce::AudioParameterChoice>("HighCut Slope", "HighCut Slope", stringArray, 0));
-//    
-//    layout.add(std::make_unique<juce::AudioParameterBool>("LowCut Bypassed", "LowCut Bypassed", false));
-//    layout.add(std::make_unique<juce::AudioParameterBool>("Peak Bypassed", "Peak Bypassed", false));
-//    layout.add(std::make_unique<juce::AudioParameterBool>("Peak 2 Bypassed", "Peak Bypassed", false));
-//    layout.add(std::make_unique<juce::AudioParameterBool>("HighCut Bypassed", "HighCut Bypassed", false));
-//    layout.add(std::make_unique<juce::AudioParameterBool>("Analyzer Enabled", "Analyzer Enabled", true));
     
     return layout;
 }
