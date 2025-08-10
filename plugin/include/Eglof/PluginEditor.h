@@ -24,9 +24,7 @@ namespace audio_plugin {
 template<typename BlockType>
 struct FFTDataGenerator
 {
-    /**
-     produces the FFT data from an audio buffer.
-     */
+
     void produceFFTDataForRendering(const juce::AudioBuffer<float>& audioData, const float negativeInfinity)
     {
         const auto fftSize = getFFTSize();
@@ -73,6 +71,7 @@ struct FFTDataGenerator
         //when you change order, recreate the window, forwardFFT, fifo, fftData
         //also reset the fifoIndex
         //things that need recreating should be created on the heap via std::make_unique<>
+        
         
         order = newOrder;
         auto fftSize = getFFTSize();
@@ -129,7 +128,6 @@ struct AnalyzerPathGenerator
 
         auto y = map(renderData[0]);
 
-//        jassert( !std::isnan(y) && !std::isinf(y) );
         if( std::isnan(y) || std::isinf(y) )
             y = bottom;
         
@@ -141,7 +139,6 @@ struct AnalyzerPathGenerator
         {
             y = map(renderData[binNum]);
 
-//            jassert( !std::isnan(y) && !std::isinf(y) );
 
             if( !std::isnan(y) && !std::isinf(y) )
             {

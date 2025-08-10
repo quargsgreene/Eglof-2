@@ -53,7 +53,6 @@ void audio_plugin::ResponseCurveComponent::updateResponseCurveImpl(std::index_se
 
         auto freq = mapToLog10(static_cast<double>(i)/static_cast<double>(w), 20.0, 20000.0);
   
-//        mag *= (((monoChain.isBypassed<I>() ? 1.f : static_cast<float>((std::get<I>(peaks).coefficients -> getMagnitudeForFrequency(freq, sampleRate)))),...));
         ([&]
          {
             auto& f = std::get<I>(peaks);
@@ -359,10 +358,6 @@ void audio_plugin::ResponseCurveComponent::updateChainImpl(std::index_sequence<I
     }
     (monoChain.setBypassed<I>(I < currentChainSettings.size() ? bypassedSettings[I] : true), ...);
     
-//    for(size_t i = 0; i <std::min<size_t>(CSV_MAX_ROWS, peakCoefficients.size()); ++i)
-//    {
-//        (updateCoefficients(monoChain.get<I>().coefficients, peakCoefficients[i]),...);
-//    }
     ([&](){
         if (I < peakCoefficients.size())
             updateCoefficients(monoChain.get<I>().coefficients, peakCoefficients[I]);
@@ -531,32 +526,12 @@ namespace audio_plugin {
 EglofAudioProcessorEditor::EglofAudioProcessorEditor(
     EglofAudioProcessor& p)
     : AudioProcessorEditor(&p),
-    openButton("csv", "*.csv", "Choose a CSV...", "Save File"),
+    openButton("csv", "*.csv", "Choose a CSV...", "Save File", p),
     processorRef(p),
-//    peakFreqSlider(*processorRef.apvts.getParameter("Peak Freq"), "Hz"),
-//    peakGainSlider(*processorRef.apvts.getParameter("Peak Gain"), "dB"),
-//    peakQualitySlider(*processorRef.apvts.getParameter("Peak Quality"), ""),
-//    lowCutFreqSlider(*processorRef.apvts.getParameter("LowCut Freq"), "Hz"),
-//    highCutFreqSlider(*processorRef.apvts.getParameter("HighCut Freq"), "Hz"),
-//    lowCutSlopeSlider(*processorRef.apvts.getParameter("LowCut Slope"), "dB/Oct"),
-//    highCutSlopeSlider(*processorRef.apvts.getParameter("HighCut Slope"), "db/Oct"),
     peakLinearGainSlider(),
-
     responseCurveComponent(processorRef),
-
-//    peakFreqSliderAttachment(processorRef.apvts, "Peak Freq", peakFreqSlider),
-//    peakGainSliderAttachment(processorRef.apvts, "Peak Gain", peakGainSlider),
-//    peakQualitySliderAttachment(processorRef.apvts, "Peak Quality", peakQualitySlider),
-//    lowCutFreqSliderAttachment(processorRef.apvts, "LowCut Freq", lowCutFreqSlider),
-//    highCutFreqSliderAttachment(processorRef.apvts, "HighCut Freq", highCutFreqSlider),
-//    lowCutSlopeSliderAttachment(processorRef.apvts, "LowCut Slope", lowCutSlopeSlider),
-//    highCutSlopeSliderAttachment(processorRef.apvts, "HighCut Slope", highCutSlopeSlider),
     peakLinearGainSliderAttachment(processorRef.apvts, "Peak Master Gain", peakLinearGainSlider),
-
-//    lowcutBypassButtonAttachment(processorRef.apvts, "LowCut Bypassed", lowcutBypassButton),
     peakBypassButtonAttachment(processorRef.apvts, "Bypass All", peakBypassButton)
-//    highcutBypassButtonAttachment(processorRef.apvts, "HighCut Bypassed", highcutBypassButton),
-//    analyzerEnabledButtonAttachment(processorRef.apvts, "Analyzer Enabled", analyzerEnabledButton)
    
 {
   juce::ignoreUnused(processorRef);
@@ -596,11 +571,6 @@ EglofAudioProcessorEditor::EglofAudioProcessorEditor(
         addAndMakeVisible(&helpButton);
         addAndMakeVisible(&chooseRandomDataButton);
         addAndMakeVisible(&downloadCSVButton);
-    
-        
-//        peakGainSlider.labels.add({0.f, "-24dB"});
-//        peakGainSlider.labels.add({1.f, "+24dB"});
-        
         
         for( auto* comp : getComps() )
         {
@@ -613,10 +583,6 @@ EglofAudioProcessorEditor::EglofAudioProcessorEditor(
             if( auto* comp = safePtr.getComponent() )
             {
                 auto bypassed = comp->peakBypassButton.getToggleState();
-                
-//                comp->peakFreqSlider.setEnabled( !bypassed );
-//                comp->peakGainSlider.setEnabled( !bypassed );
-//                comp->peakQualitySlider.setEnabled( !bypassed );
                 comp->peakLinearGainSlider.setEnabled( !bypassed );
             }
         };
@@ -679,9 +645,6 @@ void EglofAudioProcessorEditor::paint(juce::Graphics& g) {
   g.setColour(juce::Colour(255u, 154u, 1u));
   g.setColour(juce::Colours::grey);
   g.setFont(14);
-//  g.drawFittedText("LowCut", lowCutSlopeSlider.getBounds(), juce::Justification::centredBottom, 1);
-//  g.drawFittedText("Peak", peakQualitySlider.getBounds(), juce::Justification::centredBottom, 1);
-//  g.drawFittedText("HighCut", highCutSlopeSlider.getBounds(), juce::Justification::centredBottom, 1);
 }
 
 void EglofAudioProcessorEditor::resized() {

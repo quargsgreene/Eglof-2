@@ -28,7 +28,8 @@ namespace audio_plugin {
         AddCsv(const juce::String &fileExtension,
                const juce::String &fileWildCard,
                const juce::String &openFileDialogTitle,
-               const juce::String &saveFileDialogTitle);
+               const juce::String &saveFileDialogTitle,
+               EglofAudioProcessor&);
 
         ~AddCsv() override;
         
@@ -39,7 +40,13 @@ namespace audio_plugin {
          };
          void changeListenerCallback(juce::ChangeBroadcaster* source) override;
          void setColumnMenus (CsvColumnSelectionDropdown* m1, CsvColumnSelectionDropdown* m2, CsvColumnSelectionDropdown* m3, CsvColumnSelectionDropdown* m4);
+         void csvColumnMenuChanged();
          juce::StringArray getCsvColumns(auto file);
+         juce::StringArray getCsvRows(auto file);
+         juce::StringArray getCsvRowCells(juce::String csvRow);
+         std::vector<juce::String> getColumn(int columnIndex);
+         int getSelectedColumnIndex(int selectedColumnId);
+         void printCsvFreqs(std::vector<float>& csvFreqs);
         
     private:
         FileTransportState state;
@@ -52,6 +59,9 @@ namespace audio_plugin {
         juce::String wildcardExtName;
         juce::String openDialogText;
         juce::String saveDialogText;
+        
+//        juce::AudioProcessorValueTreeState& apvts;
+        EglofAudioProcessor& processorRef;
         
         CsvColumnSelectionDropdown* menu1 = nullptr;
         CsvColumnSelectionDropdown* menu2 = nullptr;
