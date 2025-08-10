@@ -229,8 +229,79 @@ void AddCsv::setColumnMenus(CsvColumnSelectionDropdown *m1, CsvColumnSelectionDr
         menu4 = m4;
     }
 
+ std::vector<float> AddCsv::normalizeFrequenciesToAudibleRange (const std::vector<float> csvColumn)
+{
+    constexpr float MIN_FREQ = 20.f;
+    constexpr float MAX_FREQ = 20000.f;
+    
+    std::vector<float> validFreqs;
+    validFreqs.reserve(csvColumn.size());
+    for(size_t i = 0; i < csvColumn.size(); ++i)
+    {
+        if(std::isfinite(csvColumn[i]) && csvColumn[i] > 0.0f)
+        {
+            validFreqs.push_back(csvColumn[i]);
+        }
+    }
+    
+    std::vector<float> normalized;
+    normalized.reserve(csvColumn.size());
+    
+    if(validFreqs.empty())
+    {
+        normalized.assign(csvColumn.size(), 0.0f);
+        return normalized;
+    }
+    
+    auto [minIterator, maxIterator] = std::minmax_element(validFreqs.begin(), validFreqs.end());
+    const float sourceDataMin = *minIterator;
+    const float sourceDataMax = *maxIterator;
+    
+    if(sourceDataMin <= 0.f || !std::isfinite(sourceDataMin) || !std::isfinite(sourceDataMax))
+    {
+        normalized.assign(csvColumn.size(), 0.f);
+        return normalized;
+    }
+    
+    if(sourceDataMin >= MIN_FREQ && sourceDataMax <= MAX_FREQ)
+    {
+        return csvColumn;
+    }
+    
+    const float ratio = MAX_FREQ/MIN_FREQ;
+    const float sourceDataRatio = sourceDataMax/sourceDataMin;
+    
+    if(sourceDataRatio <= 0.0f || !std::isfinite(sourceDataRatio))
+    {
+        normalized.assign(static_cast<size_t>(csvColumns.size()), 0.0f);
+        return normalized;
+    }
+     
+    const float logRatio = std::log(ratio) / std::log(sourceDataRatio);
+    const float minPower = MIN_FREQ/std::pow(sourceDataMin, logRatio);
+    
+    normalized.clear();
+    normalized.reserve(csvColumn.size());
+     
+     for(size_t i = 0; i < csvColumn.size(); ++i)
+    {
+        if(!std::isfinite(csvColumn[i]) || csvColumn[i] <= 0.f)
+        {
+            normalized.push_back(0.f);
+        } else {
+            float gPow = minPower * std::pow(csvColumn[i], logRatio);
+            gPow = juce::jlimit(MIN_FREQ, MAX_FREQ, gPow);
+            normalized.push_back(gPow);
+        }
+    }
+     
+     
+    return normalized;
+}
+
 void AddCsv::csvColumnMenuChanged()
 {
+    csvFreqs = normalizeFrequenciesToAudibleRange(csvFreqs);
     int selectedColumnId = menu2->getSelectedId();
     int selectedColumnIndex = getSelectedColumnIndex(selectedColumnId);
     std::vector<juce::String> selectedColumn = getColumn(selectedColumnIndex);

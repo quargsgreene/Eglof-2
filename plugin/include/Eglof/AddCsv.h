@@ -47,6 +47,7 @@ namespace audio_plugin {
          std::vector<juce::String> getColumn(int columnIndex);
          int getSelectedColumnIndex(int selectedColumnId);
          void printCsvFreqs(std::vector<float>& csvFreqs);
+         std::vector<float> normalizeFrequenciesToAudibleRange (const std::vector<float> csvColumn);
         
     private:
         FileTransportState state;

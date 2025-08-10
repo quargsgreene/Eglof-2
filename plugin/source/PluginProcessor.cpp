@@ -226,18 +226,6 @@ void EglofAudioProcessor::setStateInformation (const void* data, int sizeInBytes
     }
 }
 
-
-//void initializeChainSettings ()
-//  {
-//    
-//        for (size_t i = 0; i < CSV_MAX_ROWS; ++i)
-//        {
-//            chainSettings.push_back({0.0f, 0.0f, 0.0f, false});
-//        }
-//    
-//
-//}
-
 std::vector<Peak> getChainSettings(juce::AudioProcessorValueTreeState& apvts)
 {
     auto loadFloat = [](std::atomic<float>* param) -> float {return param ? param->load() : 0.f;};
@@ -385,6 +373,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout EglofAudioProcessor::createP
     
     layout.add(std::make_unique<juce::AudioParameterFloat>(std::format("Peak Master Gain"), std::format("Peak Master Gain"), juce::NormalisableRange<float>(-24.f, 24.f, 0.1f, 1.f), 0.f));
     layout.add(std::make_unique<juce::AudioParameterBool>(std::format("Bypass All"), std::format("Bypass All"), false));
+    
     
     for(size_t i = 0; i < CSV_MAX_ROWS; ++i)
     {

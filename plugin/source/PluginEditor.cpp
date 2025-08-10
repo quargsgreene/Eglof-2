@@ -531,8 +531,8 @@ EglofAudioProcessorEditor::EglofAudioProcessorEditor(
     peakLinearGainSlider(),
     responseCurveComponent(processorRef),
     peakLinearGainSliderAttachment(processorRef.apvts, "Peak Master Gain", peakLinearGainSlider),
-    peakBypassButtonAttachment(processorRef.apvts, "Bypass All", peakBypassButton)
-   
+    bypassButtonAttachment(processorRef.apvts, "Bypass All", bypassButton)
+  
 {
   juce::ignoreUnused(processorRef);
   // Make sure that before the constructor has finished, you've set the
@@ -578,12 +578,12 @@ EglofAudioProcessorEditor::EglofAudioProcessorEditor(
         }
     
         auto safePtr = juce::Component::SafePointer<EglofAudioProcessorEditor>(this);
-        peakBypassButton.onClick = [safePtr]()
+        bypassButton.onClick = [safePtr]()
         {
             if( auto* comp = safePtr.getComponent() )
             {
-                auto bypassed = comp->peakBypassButton.getToggleState();
-                comp->peakLinearGainSlider.setEnabled( !bypassed );
+                auto bypassed = comp->bypassButton.getToggleState();
+                comp->peakLinearGainSlider.setEnabled(!bypassed);
             }
         };
     
@@ -597,7 +597,7 @@ std::vector<juce::Component*> EglofAudioProcessorEditor::getComps()
     return
     {
         &responseCurveComponent,
-        &peakBypassButton,
+        &bypassButton,
         &peakLinearGainSlider
     };
 }
@@ -675,7 +675,7 @@ void EglofAudioProcessorEditor::resized() {
     bounds.removeFromTop(5);
     
     peakLinearGainSlider.setBounds(backwardPresetButton.getX() + 100, backwardPresetButton.getY() + 125, 4*getWidth()/10, 50);
-    peakBypassButton.setBounds(-30,-30, getWidth()/10, getWidth()/10);
+    bypassButton.setBounds(-30,-30, getWidth()/10, getWidth()/10);
     openButton.setBounds (1000, 35, 190, 200);
     
     presetMenu.setBounds(marginX + gapX/3, marginY - 80, menuWidth, menuHeight);

@@ -68,11 +68,7 @@ struct FFTDataGenerator
     
     void changeOrder(FFTOrder newOrder)
     {
-        //when you change order, recreate the window, forwardFFT, fifo, fftData
-        //also reset the fifoIndex
-        //things that need recreating should be created on the heap via std::make_unique<>
-        
-        
+                
         order = newOrder;
         auto fftSize = getFFTSize();
         
@@ -311,11 +307,11 @@ private:
 
     std::vector<juce::Component*> getComps();
     
-    LookAndFeel::PowerButton peakBypassButton;
+    LookAndFeel::PowerButton bypassButton;
     
     using ButtonAttachment = APVTS::ButtonAttachment;
     
-    ButtonAttachment peakBypassButtonAttachment;
+    ButtonAttachment bypassButtonAttachment;
     
     CsvColumnSelectionDropdown presetMenu;
 
