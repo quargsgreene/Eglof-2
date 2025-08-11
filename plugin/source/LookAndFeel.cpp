@@ -162,29 +162,7 @@ void LookAndFeel::drawToggleButton(juce::Graphics &g,
         g.strokePath(analyzerButton->randomPath, PathStrokeType(1.f));
     }
     
-    //void LookAndFeel::drawPopupMenuItem(juce::Graphics &g, const juce::Rectangle<int> &area, bool isSeparator, bool isActive, bool isHighlighted, bool isTicked, bool hasSubMenu, const juce::String &text, const juce::String &shortcutKeyText, const juce::Drawable *icon, const juce::Colour *textColour)
-    //{
-    //    (void) icon;
-    //    (void) textColour;
-    //    (void) shortcutKeyText;
-    //    (void) text;
-    //    (void) isActive;
-    //    (void) isHighlighted;
-    //    (void) hasSubMenu;
-    //    (void) isTicked;
-    //    (void) area;
-    //    
-    //    if (isSeparator){
-    //        g.setColour(findColour(juce::PopupMenu::highlightedBackgroundColourId));
-    //    }
-    
 }
 
-//void LookAndFeel::drawScrollbar (juce::Graphics& g, juce::ScrollBar &scrollbar, int x, int y, int width, int height, bool isScrollbarVertical, int thumbStartPosition, int thumbSize, bool isMouseOverButton, bool isButtonDown){}
-// slider
-// response window
-// response curve
-// help bubble
-// power button
 
 }

@@ -22,13 +22,6 @@ namespace audio_plugin {
                                bool shouldDrawButtonAsDown) override;
         juce::Font getTextButtonFont(juce::TextButton&, int buttonHeight) override;
 
-//        void drawPopupMenuItem (juce::Graphics& g, const juce::Rectangle<int>&area, bool isSeparator, bool isActive, bool isHighlighted, bool isTicked, bool hasSubMenu, const juce::String& text, const juce::String& shortcutKeyText, const juce::Drawable *icon, const juce::Colour *textColour) override;
-//        void drawScrollbar (juce::Graphics& g, juce::ScrollBar &scrollbar, int x, int y, int width, int height, bool isScrollbarVertical, int thumbStartPosition, int thumbSize, bool isMouseOverButton, bool isButtonDown) override;
-        // slider
-        // response window
-        // response curve
-        // help bubble
-        // power button
         struct AnalyzerButton : juce::ToggleButton
         {
             void resized() override

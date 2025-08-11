@@ -98,8 +98,6 @@ void EglofAudioProcessor::changeProgramName (int index, const juce::String& newN
 //==============================================================================
 void EglofAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    // Use this method as the place to do any pre-playback
-    // initialisation that you need..
     
     juce::dsp::ProcessSpec spec;
     
@@ -117,17 +115,11 @@ void EglofAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     leftChannelFifo.prepare(samplesPerBlock);
     rightChannelFifo.prepare(samplesPerBlock);
     
-    osc.initialise([](float x) { return std::sin(x); });
-    
-    spec.numChannels = static_cast<juce::uint32>(getTotalNumOutputChannels());
-    osc.prepare(spec);
-    osc.setFrequency(440);
 }
 
 void EglofAudioProcessor::releaseResources()
 {
-    // When playback stops, you can use this as an opportunity to free up any
-    // spare memory, etc.
+
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -137,10 +129,6 @@ bool EglofAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) co
     juce::ignoreUnused (layouts);
     return true;
   #else
-    // This is the place where you check if the layout is supported.
-    // In this template code we only support mono or stereo.
-    // Some plugin hosts, such as certain GarageBand versions, will only
-    // load plugins that support stereo bus layouts.
     if (//layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo()
         layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
         return false;
@@ -149,7 +137,17 @@ bool EglofAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) co
    #if ! JucePlugin_IsSynth
     if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
         return false;
+    auto in = layouts.getMainInputChannelSet();
+    if(in != juce::AudioChannelSet::mono() && in != juce::AudioChannelSet::stereo())
+    {
+        return false;
+    }
    #endif
+    auto out = layouts.getMainInputChannelSet();
+    if(out != juce::AudioChannelSet::mono() && out != juce::AudioChannelSet::stereo())
+    {
+        return false;
+    }
 
     return true;
   #endif
@@ -162,13 +160,7 @@ void EglofAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     juce::ignoreUnused(midiMessages);
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
-
-    // In case we have more outputs than inputs, this code clears any output
-    // channels that didn't contain input data, (because these aren't
-    // guaranteed to be empty - they may contain garbage).
-    // This is here to avoid people getting screaming feedback
-    // when they first compile a plugin, but obviously you don't need to keep
-    // this code if your algorithm always overwrites all the output channels.
+    
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
@@ -205,18 +197,16 @@ juce::AudioProcessorEditor* EglofAudioProcessor::createEditor()
 //==============================================================================
 void EglofAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    // You should use this method to store your parameters in the memory block.
-    // You could do that either as raw data, or use the XML or ValueTree classes
-    // as intermediaries to make it easy to save and load complex data.
     
-    juce::MemoryOutputStream mos(destData, true);
-    apvts.state.writeToStream(mos);
+//    juce::MemoryOutputStream mos(destData, true);
+//    apvts.state.writeToStream(mos);
+    auto state = apvts.copyState();
+    std::unique_ptr<juce::XmlElement> xml (state.createXml());
+    copyXmlToBinary (*xml, destData);
 }
 
 void EglofAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    // You should use this method to restore your parameters from this memory block,
-    // whose contents will have been created by the getStateInformation() call.
     auto tree = juce::ValueTree::readFromData(data, static_cast<size_t>(sizeInBytes));
     if( tree.isValid() )
     {
@@ -224,6 +214,10 @@ void EglofAudioProcessor::setStateInformation (const void* data, int sizeInBytes
 
         updateFilters(std::make_index_sequence<CSV_MAX_ROWS>{});
     }
+    std::unique_ptr<juce::XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes));
+    if (xmlState.get() != nullptr)
+        if (xmlState->hasTagName (apvts.state.getType()))
+            apvts.replaceState (juce::ValueTree::fromXml (*xmlState));
 }
 
 std::vector<Peak> getChainSettings(juce::AudioProcessorValueTreeState& apvts)
@@ -239,11 +233,6 @@ std::vector<Peak> getChainSettings(juce::AudioProcessorValueTreeState& apvts)
             loadBool (apvts.getRawParameterValue(std::format("Peak Bypassed {}", i)))});
     }
     
-    std::cout<<"Band0 freq="<<settings[0].freq<<std::endl;
-    std::cout<<"Q="<<settings[0].Q<<std::endl;
-    std::cout<<"gain="<<settings[0].gain<<std::endl;
-    std::cout<<"bypass="<<settings[0].bypass<<std::endl;
-
      return settings;
 }
 
@@ -269,22 +258,13 @@ template<std::size_t... I>
 void EglofAudioProcessor::updatePeakFilters(const std::vector<Peak>& currentChainSettings, std::index_sequence<I...>)
 {
     float gainOffsetDb = 0.f;
-    bool  allBypassed = false;
     auto* masterGainParam = apvts.getRawParameterValue("Peak Master Gain");
-    auto* bypassAllParam = apvts.getRawParameterValue("Bypass All");
     
     if (masterGainParam)
     {
         gainOffsetDb = masterGainParam ->load();
-        std::cout<<"Master=" <<gainOffsetDb<<std::endl;
     }
-    
-    if(bypassAllParam)
-    {
-        allBypassed = static_cast<bool>(bypassAllParam ->load());
-        std::cout<<"All Bypassed="<<allBypassed<<std::endl;
-    }
-    
+
     std::vector<Coefficients> peakCoefficients = makePeakFilters(currentChainSettings, getSampleRate(), gainOffsetDb);
     std::vector<bool> bypassedSettings;
     bypassedSettings.reserve(currentChainSettings.size());
@@ -323,19 +303,10 @@ void updateCoefficients(Coefficients& old, const Coefficients& replacements)
         *old = *replacements;
 }
 
-//TODO: implement updateChainSettings method that gets called when a new csv column is selected
 void updateChainSettings()
 {
     size_t csvFreqVecSize = csvFreqs.size();
-    // reset all set frequencies to 0
-    // for each csv frequency, set chain setting frequency
     size_t index = 0;
-    
-    for(size_t i = 0; i < chainSettings.size(); ++i)
-    {
-        std::cout<<"Before update:"<<std::endl;
-        std::cout<<chainSettings[i].freq<<std::endl;
-    }
     
     for(auto& filter : chainSettings)
     {
@@ -348,12 +319,6 @@ void updateChainSettings()
         ++index;
     }
     
-    for(size_t i = 0; i < chainSettings.size(); ++i)
-    {
-        std::cout<<"After update:"<<std::endl;
-        std::cout<<chainSettings[i].freq<<std::endl;
-    }
-    
 }
 
 template<std::size_t... I>
@@ -362,7 +327,6 @@ void EglofAudioProcessor::updateFilters(std::index_sequence<I...> seq)
     auto currentChainSettings = getChainSettings(apvts);
     updatePeakFilters(currentChainSettings, seq);
 }
-
 
 
 juce::AudioProcessorValueTreeState::ParameterLayout EglofAudioProcessor::createParameterLayout()

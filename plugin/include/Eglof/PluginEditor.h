@@ -325,7 +325,6 @@ private:
     juce::TextButton pasteButton{"Paste"};
     juce::TextButton chooseRandomDataButton{"Choose data for me!"};
     juce::TextButton downloadCSVButton{"Download CSV"};
-//    AddCsv openButton;
     juce::Image background;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EglofAudioProcessorEditor)

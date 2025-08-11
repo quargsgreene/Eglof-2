@@ -193,7 +193,7 @@ void audio_plugin::ResponseCurveComponent::drawTextLabels(juce::Graphics &g)
 {
     using namespace juce;
     g.setColour(juce::Colour(255u, 87u, 87u));
-    const int fontHeight = 10;
+    const int fontHeight = 8;
     g.setFont(fontHeight);
     
     auto renderArea = getAnalysisArea();
@@ -260,7 +260,7 @@ void audio_plugin::ResponseCurveComponent::drawTextLabels(juce::Graphics &g)
         
         Rectangle<int> r;
         r.setSize(static_cast<int>(textWidth), fontHeight);
-        r.setX(getWidth() - static_cast<int>(textWidth));
+        r.setX(getWidth() - static_cast<int>(textWidth) - 15);
         r.setCentre(r.getCentreX(), static_cast<int>(y));
         
         g.setColour(gDb == 0.f ? Colour(0u, 191u, 99u) : juce::Colour(255u, 87u, 87u));
@@ -291,10 +291,10 @@ juce::Rectangle<int> audio_plugin::ResponseCurveComponent::getRenderArea()
 {
     auto bounds = getLocalBounds();
     
-    bounds.removeFromTop(12);
-    bounds.removeFromBottom(2);
-    bounds.removeFromLeft(20);
-    bounds.removeFromRight(20);
+    bounds.removeFromTop(15);
+    bounds.removeFromBottom(35);
+    bounds.removeFromLeft(35);
+    bounds.removeFromRight(35);
     
     return bounds;
 }
@@ -557,7 +557,7 @@ EglofAudioProcessorEditor::EglofAudioProcessorEditor(
         addAndMakeVisible(&dataColumnMenu1);
         dataColumnMenu1.setText("Q Mapping");
         addAndMakeVisible(&dataColumnMenu2);
-        dataColumnMenu2.setText("Gain Mapping");
+        dataColumnMenu2.setText("CSV Column -> Frequency Mapping");
         addAndMakeVisible(&dataColumnMenu3);
         dataColumnMenu3.setText("Cutoff Mapping");
         addAndMakeVisible(&dataColumnMenu4);
@@ -618,9 +618,23 @@ void EglofAudioProcessorEditor::paint(juce::Graphics& g) {
       getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
 
   g.setColour(juce::Colour(140u, 82u, 255u));
-  g.setFont(juce::FontOptions("Courier", 15.0f, juce::Font::bold));
-  g.drawFittedText("Eglof FILTER", getLocalBounds(),
-                   juce::Justification::centredTop, 1);
+    // Top-left title
+  g.setFont (juce::FontOptions ("Arial Rounded MT Bold", 18.0f, juce::Font::bold));
+  g.drawText ("Eglof FILTER", getWidth()/3, 6, 260, 28, juce::Justification::centred, true);
+  g.setFont (juce::FontOptions ("Courier", 18.0f, juce::Font::bold));
+
+    // Bottom-left tagline
+  g.setFont (juce::FontOptions ("Monaco", 24.0f, juce::Font::bold));
+  g.setColour(juce::Colour(255u, 154u, 1u));
+  g.drawText ("From spreadsheets",
+                16, 120, 200, 36,
+                juce::Justification::left, true);
+  g.drawText ("to soundscapes :)",
+                  45, 170, 200, 36,
+                  juce::Justification::left, true);
+  g.setColour(juce::Colour(140u, 82u, 255u));
+  g.setFont (juce::FontOptions ("Courier", 15.0f, juce::Font::bold));
+
     
   magnitudes.resize(static_cast<std::vector<int>::size_type>(responseWidth));
 
@@ -639,7 +653,7 @@ void EglofAudioProcessorEditor::paint(juce::Graphics& g) {
 
   g.setColour(juce::Colour(140u, 82u, 255u));
   g.setFont(15.0f);
-  g.drawText("Gain", getWidth()/40 + 150, 15, 120, 200, juce::Justification::centredLeft);
+  g.drawText("Gain Scale", getWidth()/4, 10, 120, 65, juce::Justification::centredLeft);
 
     
   g.setColour(juce::Colour(255u, 154u, 1u));
@@ -652,8 +666,9 @@ void EglofAudioProcessorEditor::resized() {
     int marginY = 90;
     int dialWidth = (getWidth() - marginX)/8;
     int dialHeight = (getWidth() - marginX)/8;
-    int menuWidth = (getWidth() - marginX)/4;
-    int menuHeight = (getWidth() - marginX)/32;
+    int menuWidth = 4*getWidth()/10;
+    int menuHeight = (getWidth() - marginX)/8;
+    juce::ignoreUnused(marginY);
     int gapX = 150;
     int gapY = gapX/3;
     juce::ignoreUnused(dialWidth);
@@ -666,26 +681,20 @@ void EglofAudioProcessorEditor::resized() {
     
     bounds.removeFromTop(5);
     
-    float hRatio = 70.f / 100.f; //JUCE_LIVE_CONSTANT(25) / 100.f;
+    float hRatio = 60.f / 100.f;
 
-    auto responseArea = bounds.removeFromBottom(static_cast<int>((bounds.getHeight() * hRatio))); //change from 0.33 to 0.25 because I needed peak hz text to not overlap the slider thumb
+    auto responseArea = bounds.removeFromBottom(static_cast<int>((bounds.getHeight() * hRatio))); //change from 0.33 to 0.25 because I needed peak hz text to not overlap the
 
     responseCurveComponent.setBounds(responseArea);
     
     bounds.removeFromTop(5);
     
-    peakLinearGainSlider.setBounds(backwardPresetButton.getX() + 100, backwardPresetButton.getY() + 125, 4*getWidth()/10, 50);
-    bypassButton.setBounds(-30,-30, getWidth()/10, getWidth()/10);
-    openButton.setBounds (1000, 35, 190, 200);
     
-    presetMenu.setBounds(marginX + gapX/3, marginY - 80, menuWidth, menuHeight);
-//    dataColumnMenu1.setBounds(marginX + 4 * gapX + 15, marginY, menuWidth/2, menuHeight);
-    dataColumnMenu2.setBounds((peakLinearGainSlider.getX() + openButton.getX())/2 + getWidth()/10, peakLinearGainSlider.getY() + 5, menuWidth + gapX/2, menuHeight);
-    backwardPresetButton.setBounds(presetMenu.getX(), 11 * presetMenu.getY()/2, presetMenu.getWidth()/6, presetMenu.getHeight());
-    forwardPresetButton.setBounds(presetMenu.getX() + gapX/3, 11 * presetMenu.getY()/2, presetMenu.getWidth()/6, presetMenu.getHeight());
-    compareButton.setBounds(presetMenu.getX() + 2 * gapX/3, 11 * presetMenu.getY()/2, presetMenu.getWidth()/3, presetMenu.getHeight());
-    copyButton.setBounds(presetMenu.getX() + 4 * gapX/3, 11 * presetMenu.getY()/2, presetMenu.getWidth()/6, presetMenu.getHeight());
-    pasteButton.setBounds(presetMenu.getX() + 5 * gapX/3, 11 * presetMenu.getY()/2, presetMenu.getWidth()/6, presetMenu.getHeight());
+    bypassButton.setBounds(-15,-15, getWidth()/10, getWidth()/10);
+    openButton.setBounds (3*getWidth()/4 , 35, 270, 230);
+    dataColumnMenu2.setBounds(getWidth()/4, 120, menuWidth, menuHeight);
+    peakLinearGainSlider.setBounds(dataColumnMenu2.getX(), dataColumnMenu2.getY() - 60, 4*getWidth()/10, 50);
+
 }
 
 }  // namespace audio_plugin

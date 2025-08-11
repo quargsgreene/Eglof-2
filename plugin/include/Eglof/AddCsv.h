@@ -46,7 +46,6 @@ namespace audio_plugin {
          juce::StringArray getCsvRowCells(juce::String csvRow);
          std::vector<juce::String> getColumn(int columnIndex);
          int getSelectedColumnIndex(int selectedColumnId);
-         void printCsvFreqs(std::vector<float>& csvFreqs);
          std::vector<float> normalizeFrequenciesToAudibleRange (const std::vector<float> csvColumn);
         
     private:
@@ -61,7 +60,6 @@ namespace audio_plugin {
         juce::String openDialogText;
         juce::String saveDialogText;
         
-//        juce::AudioProcessorValueTreeState& apvts;
         EglofAudioProcessor& processorRef;
         
         CsvColumnSelectionDropdown* menu1 = nullptr;

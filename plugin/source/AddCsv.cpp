@@ -118,23 +118,11 @@ juce::StringArray AddCsv::getCsvRows(auto file)
     return csvRows;
 }
 
-void AddCsv::printCsvFreqs(std::vector<float>& csvFreqs)
-{
-    for(auto freq : csvFreqs)
-    {
-        std::cout<<"Csv Frequencies: ";
-        std::cout<<freq<<std::endl;
-    }
-}
-
 juce::StringArray AddCsv::getCsvColumns(auto file)
 {
     juce::StringArray csvRows;
     file.readLines(csvRows);
     juce::String csvColumnString = csvRows[0];
-    std::cout<<"Column String Length:"<<std::endl;
-    std::cout<<csvColumnString.length()<<std::endl;
-
     juce::String currentColumn;
     juce::StringArray columns;
     juce::String comma(",");
@@ -143,10 +131,6 @@ juce::StringArray AddCsv::getCsvColumns(auto file)
     
     for (int i = 0; i < csvColumnString.length(); i++)
     {
-        std::cout <<"i:"<<std::endl;
-        std::cout<<i<<std::endl;
-        std::cout<<"Current Column before if else:"<<std::endl;
-        std::cout<<currentColumn<<std::endl;
         juce::String currentChar = juce::String::charToString(csvColumnString[i]);
         if(currentChar == comma){
             columns.add(currentColumn);
@@ -156,17 +140,11 @@ juce::StringArray AddCsv::getCsvColumns(auto file)
         else{
             currentColumn += currentChar;
         }
-        std::cout <<"Current Char:"<<std::endl;
-        std::cout<<currentChar << std::endl;
-        std::cout<<"Current Column after if else:"<<std::endl;
-        std::cout<<currentColumn<<std::endl;
     }
     if(currentColumn.isNotEmpty()){
         columns.add(currentColumn);
     }
-    for(int i = 0; i < columns.size(); i++){
-        std::cout<<columns[i]<<std::endl;
-    }
+
     return columns;
 }
 
@@ -193,9 +171,7 @@ juce::StringArray AddCsv::getCsvRowCells(juce::String csvRow)
     if(currentCell.isNotEmpty()){
         cells.add(currentCell);
     }
-    for(int i = 0; i < cells.size(); i++){
-        std::cout<<cells[i]<<std::endl;
-    }
+
     return cells;
 }
 
