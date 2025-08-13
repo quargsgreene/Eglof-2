@@ -11,7 +11,7 @@
 #include <tuple>
 #include <utility>
 
-inline constexpr size_t CSV_MAX_ROWS = 1000;
+inline constexpr size_t CSV_MAX_ROWS = 100;
 inline std::vector<float> csvFreqs;
 
 struct Peak {

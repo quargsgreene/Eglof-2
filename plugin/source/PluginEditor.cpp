@@ -333,21 +333,19 @@ void audio_plugin::ResponseCurveComponent::updateChainImpl(std::index_sequence<I
 {
     std::vector<Peak> currentChainSettings = getChainSettings(audioProcessor.apvts);
     float gainOffsetDb = 0.0f;
-    bool  allBypassed = false;
+//    bool  allBypassed = false;
     auto* gainParam = audioProcessor.apvts.getRawParameterValue("Peak Master Gain");
-    auto* bypassAllParam = audioProcessor.apvts.getRawParameterValue("Bypass All");
+//    auto* bypassAllParam = audioProcessor.apvts.getRawParameterValue("Bypass All");
     if(gainParam)
     {
         gainOffsetDb = gainParam->load();
-        std::cout<<"param=" << gainParam->load();
  
     }
     
-    if(bypassAllParam)
-    {
-        allBypassed = static_cast<bool>(bypassAllParam ->load());
-        std::cout<<"All Bypassed="<<allBypassed<<std::endl;
-    }
+//    if(bypassAllParam)
+//    {
+//        allBypassed = static_cast<bool>(bypassAllParam ->load());
+//    }
     
     auto peakCoefficients = makePeakFilters(currentChainSettings, audioProcessor.getSampleRate(), gainOffsetDb);
     std::vector<bool> bypassedSettings;
@@ -624,6 +622,11 @@ void EglofAudioProcessorEditor::paint(juce::Graphics& g) {
   g.setFont (juce::FontOptions ("Courier", 18.0f, juce::Font::bold));
 
     // Bottom-left tagline
+  g.setFont (juce::FontOptions ("Times New Roman", 64.0f, juce::Font::bold));
+  g.setColour(juce::Colour(0u, 191u, 99u));
+  g.drawText (">>>>>",
+                  16, 40, 200, 36,
+                  juce::Justification::left, true);
   g.setFont (juce::FontOptions ("Monaco", 24.0f, juce::Font::bold));
   g.setColour(juce::Colour(255u, 154u, 1u));
   g.drawText ("From spreadsheets",
@@ -633,6 +636,10 @@ void EglofAudioProcessorEditor::paint(juce::Graphics& g) {
                   45, 170, 200, 36,
                   juce::Justification::left, true);
   g.setColour(juce::Colour(140u, 82u, 255u));
+  g.setFont (juce::FontOptions ("Times New Roman", 64.0f, juce::Font::bold));
+  g.drawText ("<<<<<",
+                    16, 260, 200, 36,
+                    juce::Justification::left, true);
   g.setFont (juce::FontOptions ("Courier", 15.0f, juce::Font::bold));
 
     
@@ -690,7 +697,7 @@ void EglofAudioProcessorEditor::resized() {
     bounds.removeFromTop(5);
     
     
-    bypassButton.setBounds(-15,-15, getWidth()/10, getWidth()/10);
+//    bypassButton.setBounds(-15,-15, getWidth()/10, getWidth()/10);
     openButton.setBounds (3*getWidth()/4 , 35, 270, 230);
     dataColumnMenu2.setBounds(getWidth()/4, 120, menuWidth, menuHeight);
     peakLinearGainSlider.setBounds(dataColumnMenu2.getX(), dataColumnMenu2.getY() - 60, 4*getWidth()/10, 50);

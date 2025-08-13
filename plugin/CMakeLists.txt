@@ -25,6 +25,7 @@ juce_add_plugin(
   FORMATS
   Standalone
   VST3
+  AAX
   AU # may change this
   PRODUCT_NAME
   "Eglof" # change this
